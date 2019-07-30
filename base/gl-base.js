@@ -111,3 +111,7 @@ function shuffle(a) {
 function lerp(a, b, f) {
     return a + f * (b - a)
 }
+
+function clamp(v, min, max) {
+    return Math.max(Math.min(v, max), min)
+}
