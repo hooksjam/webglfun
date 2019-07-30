@@ -58,7 +58,7 @@ var points = new Float32Array();
 var time = 0.0
 
 var grav = 1//0.01
-var ringCount = 1000
+var ringCount = 5000
 var replicants = 5000
 var dampZ = 0.1
 
@@ -212,10 +212,10 @@ function draw() {
 
     
     // Draw the triangle. 
-    //gl.drawArrays(gl.TRIANGLES, 0, positions.length*3); 
+    gl.drawArrays(gl.TRIANGLES, 0, positions.length*3); 
 
 
-    pushTransform(mat4.clone(modelview))
+    /*pushTransform(mat4.clone(modelview))
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
     gl.bufferData(gl.ARRAY_BUFFER, points, gl.STREAM_DRAW);
@@ -230,7 +230,7 @@ function draw() {
         gl.drawArrays(gl.Points, 0, positions.length)
     }
 
-    modelview = popTransform()
+    modelview = popTransform()*/
 
 
     // Sphere at center

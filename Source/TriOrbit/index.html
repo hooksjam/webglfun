@@ -81,7 +81,7 @@
   void main() {
     gl_PointSize = 1.0 + shift; 
     vec4 coords = vec4(a_coords, 1.0);
-    //coords = coords + vec4(a_normal, 1.0)*shift;
+    coords = coords + vec4(a_normal, 1.0)*shift;
     vec4 eyeCoords = modelview * coords;
     gl_Position = projection * eyeCoords;
     //gl_Position = vec4(a_coords, 0.0, 1.0);
