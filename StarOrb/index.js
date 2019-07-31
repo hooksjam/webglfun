@@ -1,57 +1,12 @@
-var a_coords_loc       // Location of the a_coords attribute variable in the shader program.
-var a_coords_buffer    // Buffer to hold the values for a_coords.
-var a_size_loc = -1
-var a_size_buffer
-var a_color_loc = -1
-var a_color_buffer
-var a_texcoord_loc = -1
-var a_texcoord_buffer
-
-var u_diffuseColor     // Locations of uniform variables in the shader program
-var u_specularColor
-var u_specularExponent
-var u_lightPosition
-var u_modelview
-var u_projection
-var u_normalMatrix   
-
-var canvas
 var projection = mat4.create()    // projection matrix
 var modelview                    // modelview matrix; value comes from rotator
 var normalMatrix = mat3.create();  // matrix, derived from modelview matrix, for transforming normal vectors
-var rotator  // A TrackballRotator to implement rotation by mouse.
-var zoomer
-var colors = [  // RGB color arrays for diffuse and specular color values, selected by popup menu
-    [1,1,1], [1,0,0], [0,1,0], [0,0,1], [0,1,1], [1,0,1], [1,1,0], [0,0,0], [0.5,0.5,0.5]
-];
-var lightPositions = [  // values for light position, selected by popup menu
-    [0,0,0,1], [0,0,1,0], [0,1,0,0], [0,0,-10,1], [2,3,5,0]
-];
-var objects = [  // Objects for display, selected by popup menu
-    cube(5),
-    uvTorus(3,1,64,32),
-    uvCylinder(1.5,5.5),
-    uvCone(2.5,5.5),
-    uvSphere(3),
-    uvSphere(3,12,6)
-];
-var currentModelNumber;  // contains data for the current object
-
-var points = []
-var coords = new Float32Array()
-var colors = new Float32Array()
-var normals = new Float32Array()
-var sizes = new Float32Array()
 
 var scale = 1
 var dt = 1000/60
 var time = 0
-var resetTimeout
 
-var fieldSize = 100000
-
-var clearVal = 0
-
+var fieldSize = 100//100000
 var seeds 
 var freqMin = 0.1 
 var freqMax = 4
@@ -71,39 +26,26 @@ var sampleColors = [
 var texture
 var framebuffer
 
+var field = null
+var cube = null
+
 //'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']
+/* Initialize the WebGL context.  Called from init() */
+function init() {
+    glInit(() => {
+        gl.enable(gl.DEPTH_TEST)
 
-function installModel(modelData) {
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_coords_loc);
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_normal_loc);
-     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
-     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
-}
+        rotator = new TrackballRotator(canvas, draw, 15)
+        zoomer = new Zoomer(canvas) 
 
-function installModelWithTexture(modelData) {
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_coords_loc);
+        reset()
+    })
 
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_texcoord_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexTextureCoords, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_texcoord_loc, 2, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_texcoord_loc);
-
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_normal_loc);
-
-     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
-     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
+    document.body.onkeyup = function(e){
+        if(e.keyCode == 32){
+            reset()
+        }
+    }   
 }
 
 function loop() {
@@ -115,15 +57,6 @@ function loop() {
 }
 
 function reset() {
-    console.log("RESET")
-
-    rotator = new TrackballRotator(canvas, draw, 15)
-    zoomer = new Zoomer(canvas)
-
-    // if(resetTimeout)
-        // clearTimeout(resetTimeout)
-    // resetTimeout = setTimeout(reset, 1000)
-
     frequencies = [
         lerp(freqMin, freqMax, Math.random()),
         lerp(freqMin, freqMax, Math.random()),
@@ -132,7 +65,33 @@ function reset() {
 
     seeds = [Math.random(), Math.random(), Math.random(), Math.random()]
 
-    /* Start draw field */
+    /* Create Objects */
+    /*field = initObject({
+        name:"unlitPoint",
+        elements:fieldSize,
+        drawMode: gl.POINTS
+    })*/
+
+    gl.viewport(0,0, canvas.width, canvas.height)
+
+    var color = defaultColors[0]
+    color.push(1)
+    var mat = initMaterial("phongColor", {
+        "specularColor": [0.5, 0.5, 0.5],
+        "diffuseColor": color,
+        "specularExponent": 1,
+        "lightPosition": defaultLights[1]
+    })
+
+    cube = initObject({
+        mat:mat,
+        model:"cube"
+    })
+
+    // generateField()
+    draw()
+
+    /* Start draw field *
     texture = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, texture)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 
@@ -154,14 +113,14 @@ function reset() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0,0,canvas.width, canvas.height)
 
-    drawField()
+    // drawField()
 
     // Draw cube now
     initBasicTexture()
     installModelWithTexture(objects[0])
     currentModelNumber = 0
 
-    draw(false)
+    draw()
     /* End draw field */
 
     /* Start test texture *
@@ -208,10 +167,6 @@ function generateField() {
         points.push(vec)
     }
 
-    // Create points
-    coords = new Float32Array(fieldSize*3)
-    colors = new Float32Array(fieldSize*3)
-    sizes = new Float32Array(fieldSize)
 
     // Update coords from points
     var s = 0
@@ -307,43 +262,44 @@ function generateField() {
             b = Math.random()*/
         }
 
-        coords[i*3 + 0] = -1 + 2*points[i][0]
-        coords[i*3 + 1] = -1 + 2*points[i][1]
-        coords[i*3 + 2] = -1 + 2*points[i][2]
+        field.setValue("coords", i*3 + 0, -1 + 2*points[i][0])
+        field.setValue("coords", i*3 + 1, -1 + 2*points[i][1])
+        field.setValue("coords", i*3 + 2, 2*points[i][2])
 
+        // field.setValue("color", i*3 + 0, Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1))
+        // field.setValue("color", i*3 + 1, Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1))
+        // field.setValue("color", i*3 + 2, Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1))
 
-        colors[i*3 + 0] = Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1)
-        colors[i*3 + 1] = Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1)
-        colors[i*3 + 2] = Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1)
+        // field.setValue("size", i, s)
 
-        sizes[i] = s
+        field.setValue("color", i*3 + 0, 1)
+        field.setValue("color", i*3 + 1, 1)
+        field.setValue("color", i*3 + 2, 1)
+
+        field.setValue("size", i, 5)
+ 
+
     }
+    console.log(field.getArray("coords"))
+    field.dirty()
+    console.log("Dirty")
 
     //console.log("Min: " + min + " Max: " + max)
 }
 
-function drawField() {
+function draw() { 
     gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // mat4.perspective(projection, Math.PI/5, 1, 10, 20);
+
+    // Draw flat field as background
     mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
-    modelview = mat4.create()//rotator.getViewMatrix();
+    modelview = mat4.create()
 
-    // Uniforms
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection ); 
+    if(field)
+        field.draw(modelview, projection, null, true)
 
-    drawPoints();
-}
-
-function draw(clear = true) { 
-    // Multi Triangle
-    if(clear) {
-        gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    }
-
+    // Draw perspective object
     mat4.perspective(projection, Math.PI/5, 1, 10, 20);
     modelview = rotator.getViewMatrix();
 
@@ -352,181 +308,8 @@ function draw(clear = true) {
 	    var zoom = zoomer.getZoomScale()
 	    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
 	}
-
-    // Uniforms
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection ); 
-
-    drawModel()
-}
-
-function drawModel() {
     mat3.normalFromMat4(normalMatrix, modelview);
-    gl.uniformMatrix3fv(u_normalMatrix, false, normalMatrix);
-    gl.uniform4fv(u_lightPosition, lightPositions[0]); 
-    
-    gl.drawElements(gl.TRIANGLES, objects[currentModelNumber].indices.length, gl.UNSIGNED_SHORT, 0); 
-}
 
-function drawTris() {
-
-    // Set up values for the "coords" attribute 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STREAM_DRAW);
-    gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_coords_loc); 
-   
-    // Set up values for the "color" attribute 
-    if(a_color_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
-
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
-
-    // Draw the triangles. 
-    gl.drawArrays(gl.TRIANGLES, 0, points.length*3);
-}
-
-function drawPoints() {
-
-    // Set up values for the "coords" attribute 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STREAM_DRAW);
-    gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_coords_loc); 
-   
-    // Set up values for the "color" attribute
-    if(a_color_loc != -1) { 
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
-
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
-
-    // Draw the triangles. 
-    gl.drawArrays(gl.POINTS, 0, points.length); 
-}
-
-
-function initBasic() {
-    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-    u_shift = gl.getUniformLocation(prog, "shift")
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-function initBasicTexture() {
-    var prog = createProgram(gl,"basicTexture-vshader-source","basicTexture-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords")
-    a_coords_buffer = gl.createBuffer()
-    a_texcoord_loc = gl.getAttribLocation(prog, "a_texcoord")
-    a_texcoord_buffer = gl.createBuffer()
-    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
-    a_normal_buffer = gl.createBuffer(); 
-    console.log("NORMALSo")
-    console.log(a_normal_loc)
-
-    index_buffer = gl.createBuffer()
-
-    u_modelview = gl.getUniformLocation(prog, "modelview")
-    u_projection = gl.getUniformLocation(prog, "projection")
-    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
-    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-function initPhong() {
-    var prog = createProgram(gl,"phong-vshader-source","phong-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
-    a_normal_buffer = gl.createBuffer();
-    a_size_loc = -1
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");
-    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
-    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
-    u_diffuseColor =  gl.getUniformLocation(prog, "diffuseColor");
-    u_specularColor =  gl.getUniformLocation(prog, "specularColor");
-    u_specularExponent = gl.getUniformLocation(prog, "specularExponent");
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.uniform3f(u_specularColor, 0.5, 0.5, 0.5);
-    gl.uniform4f(u_diffuseColor, 1, 1, 1, 1);
-    gl.uniform1f(u_specularExponent, 10);
-    gl.uniform4f(u_lightPosition, 0, 0, 0, 1);	
-}
-
-function initPoint() {
-    var prog = createProgram(gl,"point-vshader-source","point-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    /*console.log("Coords: " + a_coords_loc)
-    console.log("Colors: " + a_color_loc)
-    console.log("Size: " + a_size_loc)*/
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-/* Initialize the WebGL context.  Called from init() */
-function init() {
-    console.log("Init")
-    glInit((_canvas) => {
-    	canvas = _canvas
-        reset()
-    })
-
-    document.body.onkeyup = function(e){
-        if(e.keyCode == 32){
-            reset()
-        }
-    }   
+    if(cube)
+        cube.draw(modelview, projection, normalMatrix)
 }

@@ -4,6 +4,8 @@ var a_size_loc = -1
 var a_size_buffer
 var a_color_loc = -1
 var a_color_buffer
+var a_texcoord_loc = -1
+var a_texcoord_buffer
 
 var u_diffuseColor     // Locations of uniform variables in the shader program
 var u_specularColor
@@ -13,6 +15,7 @@ var u_modelview
 var u_projection
 var u_normalMatrix   
 
+var canvas
 var projection = mat4.create()    // projection matrix
 var modelview                    // modelview matrix; value comes from rotator
 var normalMatrix = mat3.create();  // matrix, derived from modelview matrix, for transforming normal vectors
@@ -65,6 +68,9 @@ var sampleColors = [
     0.827, 0.69, 0.384, 
     0.592, 0.701, 0.773]
 
+var texture
+var framebuffer
+
 //'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']
 
 function installModel(modelData) {
@@ -80,6 +86,26 @@ function installModel(modelData) {
      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
 }
 
+function installModelWithTexture(modelData) {
+     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
+     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
+     gl.enableVertexAttribArray(a_coords_loc);
+
+     gl.bindBuffer(gl.ARRAY_BUFFER, a_texcoord_buffer);
+     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexTextureCoords, gl.STATIC_DRAW);
+     gl.vertexAttribPointer(a_texcoord_loc, 2, gl.FLOAT, false, 0, 0);
+     gl.enableVertexAttribArray(a_texcoord_loc);
+
+     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
+     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
+     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
+     gl.enableVertexAttribArray(a_normal_loc);
+
+     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
+     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
+}
+
 function loop() {
     draw()
 
@@ -90,9 +116,14 @@ function loop() {
 
 function reset() {
     console.log("RESET")
+
+    rotator = new TrackballRotator(canvas, draw, 15)
+    zoomer = new Zoomer(canvas)
+
     // if(resetTimeout)
         // clearTimeout(resetTimeout)
     // resetTimeout = setTimeout(reset, 1000)
+
     frequencies = [
         lerp(freqMin, freqMax, Math.random()),
         lerp(freqMin, freqMax, Math.random()),
@@ -101,10 +132,61 @@ function reset() {
 
     seeds = [Math.random(), Math.random(), Math.random(), Math.random()]
 
-    generateField()
+    /* Start draw field */
+    texture = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 
+    	0, gl.RGBA, gl.UNSIGNED_BYTE, null)
 
+
+    gl.viewport(0,0,512, 512)
+
+    framebuffer = gl.createFramebuffer()
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+
+    initPoint()
+    generateField()
+    drawField()
+
+    gl.generateMipmap(gl.TEXTURE_2D);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    gl.viewport(0,0,canvas.width, canvas.height)
+
+    // drawField()
+
+    // Draw cube now
+    initBasicTexture()
+    installModelWithTexture(objects[0])
+    currentModelNumber = 0
 
     draw()
+    /* End draw field */
+
+    /* Start test texture *
+    var texture = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,255,255]))
+
+    var image = new Image();
+    image.src = './space.jpg'
+    image.addEventListener('load', function() {
+        console.log("LOADED!")
+        console.log(image)
+        // Now that the image has loaded make copy it to the texture.
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+
+        // Draw cube now
+        initBasicTexture()
+        installModelWithTexture(objects[0])
+        currentModelNumber = 0
+
+        draw()
+    });
+    /* End Test Texture */
 }
 
 function getNoise(x, y, i) {
@@ -240,36 +322,49 @@ function generateField() {
     //console.log("Min: " + min + " Max: " + max)
 }
 
-function draw() { 
-    // Multi Triangle
+function drawField() {
     gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // mat4.perspective(projection, Math.PI/5, 1, 10, 20);
     mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
-    modelview = rotator.getViewMatrix();
-
-    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
-    var zoom = zoomer.getZoomScale()
-    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+    modelview = mat4.create()//rotator.getViewMatrix();
 
     // Uniforms
     gl.uniformMatrix4fv(u_modelview, false, modelview );
     gl.uniformMatrix4fv(u_projection, false, projection ); 
 
-    // drawModel()
     drawPoints();
+}
+
+function draw(clear = true) { 
+    // Multi Triangle
+    if(clear) {
+        gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    }
+
+    mat4.perspective(projection, Math.PI/5, 1, 10, 20);
+    modelview = rotator.getViewMatrix();
+
+    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
+    if(zoomer) {
+	    var zoom = zoomer.getZoomScale()
+	    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+	}
+
+    // Uniforms
+    gl.uniformMatrix4fv(u_modelview, false, modelview );
+    gl.uniformMatrix4fv(u_projection, false, projection ); 
+
+    drawModel()
 }
 
 function drawModel() {
     mat3.normalFromMat4(normalMatrix, modelview);
-    
     gl.uniformMatrix3fv(u_normalMatrix, false, normalMatrix);
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection );
+    gl.uniform4fv(u_lightPosition, lightPositions[0]); 
     
-    /* Draw the model.  The data for the model was set up in installModel() */
-   
     gl.drawElements(gl.TRIANGLES, objects[currentModelNumber].indices.length, gl.UNSIGNED_SHORT, 0); 
 }
 
@@ -328,7 +423,7 @@ function drawPoints() {
 }
 
 
-function initBasic(canvas) {
+function initBasic() {
     var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
     gl.useProgram(prog);
 
@@ -348,7 +443,30 @@ function initBasic(canvas) {
     gl.enable(gl.DEPTH_TEST);
 }
 
-function initPhong(canvas) {
+function initBasicTexture() {
+    var prog = createProgram(gl,"basicTexture-vshader-source","basicTexture-fshader-source");
+    gl.useProgram(prog);
+
+    a_coords_loc =  gl.getAttribLocation(prog, "a_coords")
+    a_coords_buffer = gl.createBuffer()
+    a_texcoord_loc = gl.getAttribLocation(prog, "a_texcoord")
+    a_texcoord_buffer = gl.createBuffer()
+    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
+    a_normal_buffer = gl.createBuffer(); 
+    console.log("NORMALSo")
+    console.log(a_normal_loc)
+
+    index_buffer = gl.createBuffer()
+
+    u_modelview = gl.getUniformLocation(prog, "modelview")
+    u_projection = gl.getUniformLocation(prog, "projection")
+    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
+    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
+
+    gl.enable(gl.DEPTH_TEST);
+}
+
+function initPhong() {
     var prog = createProgram(gl,"phong-vshader-source","phong-fshader-source");
     gl.useProgram(prog);
 
@@ -356,6 +474,7 @@ function initPhong(canvas) {
     a_coords_buffer = gl.createBuffer();
     a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
     a_normal_buffer = gl.createBuffer();
+    a_size_loc = -1
 
     index_buffer = gl.createBuffer();
 
@@ -372,12 +491,9 @@ function initPhong(canvas) {
     gl.uniform4f(u_diffuseColor, 1, 1, 1, 1);
     gl.uniform1f(u_specularExponent, 10);
     gl.uniform4f(u_lightPosition, 0, 0, 0, 1);	
-
-    installModel(objects[1]);
-    currentModelNumber = 1; 
 }
 
-function initPoint(canvas) {
+function initPoint() {
     var prog = createProgram(gl,"point-vshader-source","point-fshader-source");
     gl.useProgram(prog);
 
@@ -388,9 +504,9 @@ function initPoint(canvas) {
     a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
     a_size_buffer = gl.createBuffer(); 
 
-    console.log("Coords: " + a_coords_loc)
+    /*console.log("Coords: " + a_coords_loc)
     console.log("Colors: " + a_color_loc)
-    console.log("Size: " + a_size_loc)
+    console.log("Size: " + a_size_loc)*/
 
     index_buffer = gl.createBuffer();
 
@@ -403,24 +519,9 @@ function initPoint(canvas) {
 /* Initialize the WebGL context.  Called from init() */
 function init() {
     console.log("Init")
-    glInit((canvas) => {
-        console.log(canvas)
-        initPoint(canvas)
-        // initBasic(canvas)
-
-        rotator = new TrackballRotator(canvas, draw, 15)
-        zoomer = new Zoomer(canvas)
-
-        /*document.getElementById("freqMin").value = freqMin;
-        document.getElementById("freqMax").value = freqMax;
-        console.log("Field size " + fieldSize)
-        document.getElementById("fieldSize").value = fieldSize;
-        document.getElementById("freqMin").onchange = function() { freqMin = Number(this.value); reset(); };
-        document.getElementById("freqMax").onchange = function() { freqMax = Number(this.value); reset(); };
-        document.getElementById("fieldSize").onchange = function() { fieldSize = Number(this.value); reset(); }; */
-
+    glInit((_canvas) => {
+    	canvas = _canvas
         reset()
-        // loop()
     })
 
     document.body.onkeyup = function(e){
