@@ -199,6 +199,7 @@ function initMaterial(name, options) {
         console.log("Shader not defined in base, go there and do it")
         return
     }
+    // console.log("INIT MATERIALS " + name)
 
     // Load shader into script tag?
 
@@ -240,15 +241,13 @@ function initMaterial(name, options) {
             }
         }
 
-        mat.setUniform = (uni, vals) => {
+        mat.setUniform = (uni, vals, write = true) => {
             if(uni in mat["uniforms"]) {
                 var type = mat["uniforms"][uni]["type"]
                 var u_loc = mat["uniforms"][uni]["loc"]
 
                 // console.log("Setting uniform " + uni)
                 // console.log(type)
-                // console.log(u_loc)
-                // console.log(vals)
 
                 switch(type) {
                     case "float":
@@ -261,7 +260,7 @@ function initMaterial(name, options) {
                         gl.uniform3f(u_loc, vals[0], vals[1], vals[2]); 
                     break
                     case "vec4":
-                        gl.uniform4f(u_loc, vals[0], vals[1], vals[3], vals[4]); 
+                        gl.uniform4f(u_loc, vals[0], vals[1], vals[2], vals[3]); 
                     break
                     case "mat3":
                         gl.uniformMatrix3fv(u_loc, false, vals)
@@ -270,6 +269,9 @@ function initMaterial(name, options) {
                         gl.uniformMatrix4fv(u_loc, false, vals)
                     break
                 }
+
+                if(write)
+                    mat["uniforms"][uni]["vals"] = vals
             }
         }
 
@@ -290,6 +292,8 @@ function initMaterial(name, options) {
             // console.log(vals)
             // console.log(dim)
             // console.log(loc)
+            // console.log(mode)
+            // console.log(gl.STATIC_DRAW)
             // console.log(buffer)
 
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
@@ -343,14 +347,18 @@ function initObject(options = {}) {
     if("drawMode" in options) drawMode = options.drawMode
 
     var elements = options.elements || 0
-    var attributeValues = options.attributeValues || {}
+    var attributeValues = {}
     var dirty = true
 
     var initElements = (elem) => {
         for(var key in mat["attributes"]) {
             var atr = mat["attributes"][key]
-            attributeValues[key] = new Float32Array(elem*typeDim(atr.type))
+            attributeValues[key] = {
+                "vals": new Float32Array(elem*typeDim(atr.type)),
+                "dirty": true
+            }
         }
+
         elements = elem
     }
     initElements(elements)
@@ -369,35 +377,43 @@ function initObject(options = {}) {
 
     obj.getArray = (key) =>  {
         if(!verify(key)) return
-        return attributeValues[key]
+        return attributeValues[key]["vals"]
     }
 
     obj.setArray = (key, val) =>  {
         if(!verify(key)) return
-        attributeValues[key] = val
+        attributeValues[key]["vals"] = val
     }
 
     obj.setValues = (key, i, vals) =>  {
         if(!verify(key)) return
         for(let j = 0; j < vals.length; j++) {
-            attributeValues[key][i*vals.length + j] = vals[j]
+            attributeValues[key]["vals"][i*vals.length + j] = vals[j]
         }
+        attributeValues[key]["dirty"] = true
     }
 
     obj.getValue = (key, i) => {
         if(!verify(key)) return
-        return attributeValues[key][i]
+        return attributeValues[key]["vals"][i]
     }
     obj.setValue = (key, i, val) => {
         if(!verify(key)) return
-        attributeValues[key][i] = val
+        attributeValues[key]["vals"][i] = val
+        attributeValues[key]["dirty"] = true
     }
 
     obj.mat = mat
 
     obj.draw = (modelview, projection, normalMatrix, _dirty = false) => {
-        if(!currentMat == mat.name)
+        if(currentMat != mat.name) {
             initMaterial(mat.name)
+            dirty = true
+
+            for(var key in attributeValues) {
+                attributeValues[key]["dirty"] = true
+            }
+        }
 
         mat.setUniform("modelview", modelview)
         mat.setUniform("projection", projection)
@@ -406,28 +422,46 @@ function initObject(options = {}) {
         dirty = dirty || _dirty
 
         if(dirty) {
-            for(var key in mat["attributes"])
-                mat.setAttribute(key, attributeValues[key], {mode:streamMode})
+            for(var key in attributeValues) {
+                if(attributeValues[key]["dirty"] == true) {
+                    if(key != 'indices') {
+                        mat.setAttribute(key, attributeValues[key]["vals"], {mode:streamMode})
+                    } else {
+                        mat.setIndices(attributeValues["indices"]["vals"])
+                    }
 
-            if("indices" in attributeValues)
-                mat.setIndices(attributeValues["indices"])
+                    attributeValues[key]["dirty"] = false
+                }
+            }
+
+            for(var key in mat["uniforms"]) {
+                mat.setUniform(key, mat["uniforms"][key]["vals"], false)
+            }
+
+            dirty = false
         }
 
         // Draw the triangles.
         switch(drawMethod) {
             case "arrays":
-                console.log("Drawing array for " + elements + " ements" )
+                // console.log("Drawing array for " + elements + " ements" )
                 gl.drawArrays(drawMode, 0, elements); 
-                break
+            break
             case "elements":
-                console.log("Drawing elements for " + elements + " elements")
-                console.log(attributeValues)
+                // console.log("Drawing elements for " + elements + " elements")
                 gl.drawElements(drawMode, elements, gl.UNSIGNED_SHORT, 0);  
             break
         }
     }
 
-    obj.dirty = () => { 
+    obj.dirtyAttributes = () => {
+        for(var key in attributeValues)
+            attributeValues[key]["dirty"] = true
+
+        dirty = true
+    }
+
+    obj.dirtyUniforms = () => { 
         dirty = true 
     }
 
@@ -437,14 +471,18 @@ function initObject(options = {}) {
     }
 
     obj.setModel = (modelData) => {
-        attributeValues["coords"] = modelData.vertexPositions
+        attributeValues["coords"]["vals"] = modelData.vertexPositions
         if("texcoord" in mat["attributes"])
-            attributeValues["texcoord"] = modelData.vertexTextureCoords
+            attributeValues["texcoord"]["vals"] = modelData.vertexTextureCoords
         if("normal" in mat["attributes"])
-            attributeValues["normal"] = modelData.vertexNormals
-        attributeValues["indices"] = modelData.indices
+            attributeValues["normal"]["vals"] = modelData.vertexNormals
+        attributeValues["indices"] = {
+            "vals": modelData.indices,
+            "dirty": true
+        }
+        mat.setIndices(attributeValues["indices"]["vals"])
 
-        elements = attributeValues["indices"].length
+        elements = attributeValues["indices"]["vals"].length
         streamMode = gl.STATIC_DRAW
         drawMethod = "elements"
     }
