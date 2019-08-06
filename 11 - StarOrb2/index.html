@@ -87,13 +87,11 @@
         gl_FragColor = vec4(0,0,0,1);
     } else {
         vec4 sample = texture2D(u_texture, v_texcoord);
-        //vec3 color = 0.8*dot(L,N) * sample.rgb;
-        vec3 color = sample.rgb;
+        vec3 color = 0.8*dot(L,N) * sample.rgb;
 
-        //if (dot(R,V) > 0.0) {
-            //color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
-        //} 
-        //gl_FragColor = vec4(color, 1);
+        if (dot(R,V) > 0.0) {
+            color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
+        } 
         gl_FragColor = vec4(color, 1);
     } 
   }    
@@ -152,6 +150,61 @@
     }
 </script>
 
+<script type="x-shader/x-vertex" id="unlitTexture-vshader-source">
+  attribute vec3 a_coords;
+  attribute vec2 a_texcoord;
+  uniform mat4 modelview;
+  uniform mat4 projection; 
+  varying vec2 v_texcoord;
+
+  void main() {
+    vec4 coords = vec4(a_coords, 1.0);
+    vec4 eyeCoords = modelview * coords;
+    gl_Position = projection * eyeCoords;
+    v_texcoord = a_texcoord;
+  } 
+
+</script>
+
+<script type="x-shader/x-fragment" id="unlitTexture-fshader-source">
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+  #else
+    precision mediump float;
+  #endif
+  uniform sampler2D u_texture;
+  varying vec2 v_texcoord;
+
+  void main() {
+    gl_FragColor = texture2D(u_texture, v_texcoord);
+  }    
+</script>
+
+
+<script type="x-shader/x-vertex" id="unlitUniformColor-vshader-source">
+  attribute vec3 a_coords;
+  uniform mat4 modelview;
+  uniform mat4 projection; 
+
+  void main() {
+      vec4 coords = vec4(a_coords, 1.0);
+      vec4 eyeCoords = modelview * coords;
+      gl_Position = projection * eyeCoords;
+  } 
+</script>
+
+<script type="x-shader/x-fragment" id="unlitUniformColor-fshader-source">
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+      precision highp float;
+  #else
+      precision mediump float;
+  #endif
+  uniform vec3 color;
+
+  void main() {
+      gl_FragColor = vec4(color, 1.0);
+  }       
+</script>
 <script type="x-shader/x-vertex" id="unlitPoint-vshader-source">
   attribute vec3 a_coords;
   attribute vec3 a_color;
@@ -180,6 +233,58 @@
   }     
 </script>
 
+<script type="x-shader/x-vertex" id="cubemapReflection-vshader-source">
+     uniform mat4 projection;
+     uniform mat4 modelview;
+     attribute vec3 a_coords;
+     attribute vec3 a_normal;
+     varying vec3 v_eyeCoords;
+     varying vec3 v_normal;
+     void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_eyeCoords = eyeCoords.xyz;
+        v_normal = normalize(a_normal);
+     }
+</script>
+
+<script type="x-shader/x-fragment" id="cubemapReflection-fshader-source">
+     precision mediump float;
+     varying vec3 v_normal;
+     varying vec3 v_eyeCoords;
+     uniform samplerCube skybox;
+     uniform mat3 normalMatrix;
+     uniform mat3 inverseViewTransform;
+     void main() {
+          vec3 N = normalize(normalMatrix * v_normal);
+          vec3 V = -v_eyeCoords;
+          vec3 R = -reflect(V,N);
+          vec3 T = inverseViewTransform * R; // Transform by inverse of the view transform that was applied to the skybox
+          gl_FragColor = vec4(0.1, 0.1, 0.1, 0) + textureCube(skybox, T);
+          //gl_FragColor = vec4(0,0,1,1);
+     }
+</script>
+
+<script type="x-shader/x-vertex" id="skybox-vshader-source">
+     uniform mat4 projection;
+     uniform mat4 modelview;
+     attribute vec3 a_coords;
+     varying vec3 v_coords;
+     void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_coords = a_coords;
+     }
+</script>
+
+<script type="x-shader/x-fragment" id="skybox-fshader-source">
+     precision mediump float;
+     varying vec3 v_coords;
+     uniform samplerCube skybox;
+     void main() {
+          gl_FragColor = textureCube(skybox, v_coords);
+     }
+</script>
 <script src="../base/gl-matrix-min.js"></script>
 <script src="../base/trackball-rotator.js"></script>
 <script src="../base/zoomer.js"></script>
@@ -199,9 +304,9 @@
 	<div id="canvas-holder">
 	   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
 	</div>
-	<div>
+	<!-- <div>
 		<img src="space.jpg" style="width:800px;height:800px"></img>
-	</div>
+	</div> -->
 </div>
 <div>
 </div>

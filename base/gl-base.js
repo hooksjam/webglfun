@@ -27,6 +27,18 @@ var shaders = {
         }
     },
 
+    "unlitUniformColor": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "color":"vec3"
+        }
+    },
+
     "unlitTexture": {
         source: "unitTexture.c",
         attributes: {
@@ -80,8 +92,36 @@ var shaders = {
             "specularColor":"vec3",
             "specularExponent":"float"
         }  
-    }
+    },
+
+    "skybox": {
+        source: "skybox.c",
+        attributes: {
+            "coords": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "skybox":"samplerCube",
+        }
+    },
+
+    "cubemapReflection": {
+        source: "cubemapReflection.c",
+        attributes: {
+            "coords": "vec3",
+            "normal": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "inverseViewTransform":"mat3",
+            "skybox":"samplerCube"
+        }
+    } 
 }
+
 var materials = {}
 var currentMat
 var gl   // The webgl context.
@@ -105,11 +145,11 @@ var rotator
 var zoomer
 
 function pushTransform(tran) {
-    transformStack.push(tran)
+    transformStack.push(mat4.clone(tran))
 }
 
-function popTransform() {
-    return transformStack.pop()
+function popTransform(tran) {
+    return mat4.copy(tran, transformStack.pop())
 }
 /**
  * initialization function that will be called when the page has loaded
@@ -165,9 +205,9 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     try {
         var vertexShaderSource = getTextContent( vertexShaderID );
         var fragmentShaderSource = getTextContent( fragmentShaderID );
-        console.log("PROGRAM")
-        console.log(vertexShaderSource)
-        console.log(fragmentShaderSource)
+        // console.log("PROGRAM")
+        // console.log(vertexShaderSource)
+        // console.log(fragmentShaderSource)
     }
     catch (e) {
         throw "Error: Could not get shader source code from script elements.";
@@ -196,7 +236,7 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
 
 function initMaterial(name, options) {
     if(!(name in shaders)) {
-        console.log("Shader not defined in base, go there and do it")
+        console.log("Shader '" + name + "' not defined in base, go there and do it")
         return
     }
     // console.log("INIT MATERIALS " + name)
@@ -228,9 +268,15 @@ function initMaterial(name, options) {
             }
         }
 
+        // console.log("Shader is")
+        // console.log(shaders[name])
+
         for(var uni in shaders[name]["uniforms"]) {
+            // console.log("")
+            var loc = gl.getUniformLocation(prog, uni)
+            // console.log("Getting uniform location for " + uni)
             mat["uniforms"][uni] = {
-                "loc": gl.getUniformLocation(prog, uni),
+                "loc": loc,//gl.getUniformLocation(prog, uni),
                 "type": shaders[name]["uniforms"][uni]
             }
         }
@@ -242,11 +288,13 @@ function initMaterial(name, options) {
         }
 
         mat.setUniform = (uni, vals, write = true) => {
+            if(vals == null)
+                return
             if(uni in mat["uniforms"]) {
                 var type = mat["uniforms"][uni]["type"]
                 var u_loc = mat["uniforms"][uni]["loc"]
 
-                // console.log("Setting uniform " + uni)
+                // console.log("Setting uniform " + uni + " for " + name)
                 // console.log(type)
 
                 switch(type) {
@@ -263,14 +311,22 @@ function initMaterial(name, options) {
                         gl.uniform4f(u_loc, vals[0], vals[1], vals[2], vals[3]); 
                     break
                     case "mat3":
+
+                        // console.log("Setting uniform " + uni + " for " + name)
+                        // console.log(type)
+                        // console.log(u_loc)
                         gl.uniformMatrix3fv(u_loc, false, vals)
                     break
                     case "mat4":
                         gl.uniformMatrix4fv(u_loc, false, vals)
                     break
+                    case "skybox":
+                    break
+                    default:
+                    break
                 }
 
-                if(write)
+                if(write && type != "skybox")
                     mat["uniforms"][uni]["vals"] = vals
             }
         }
@@ -308,12 +364,15 @@ function initMaterial(name, options) {
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ind, gl.STATIC_DRAW);
             } 
         }
+        // console.log("INIT MAY")
+        // console.log(mat)
 
         materials[name] = mat
     }
 
     // Set uniforms from options
     for(var uni in options) {
+        // console.log("Setting uniform " + uni + " from start")
         materials[name].setUniform(uni, options[uni])
     }
 
@@ -335,12 +394,15 @@ function typeDim(type) {
 }
 
 function initObject(options = {}) {
-    if(!("mat" in options) && !("name" in options)) {
+    console.log("Creating object with options")
+    console.log(options)
+
+    if(!("mat" in options) && !("shader" in options)) {
         console.log("Must include mat or name in options")
         return
     }
 
-    var mat = options.mat || initMaterial(options.name)
+    var mat = options.mat || initMaterial(options.shader)
     var drawMethod = options.drawMethod || "arrays"
     var drawMode = gl.TRIANGLES
     var streamMode = gl.STREAM_DRAW
@@ -435,6 +497,7 @@ function initObject(options = {}) {
             }
 
             for(var key in mat["uniforms"]) {
+                // console.log("Setting uniform " + key +"  from draw")
                 mat.setUniform(key, mat["uniforms"][key]["vals"], false)
             }
 
@@ -487,8 +550,15 @@ function initObject(options = {}) {
         drawMethod = "elements"
     }
 
-    if("model" in options)
-        obj.setModel(defaultObjects[options["model"]])
+    if("modelName" in options)
+        obj.setModel(defaultObjects[options["modelName"]])
+
+    if("model" in options) {
+        obj.setModel(options["model"])
+    }
+
+    // console.log("CREATING OBJECT")
+    // console.log(obj)
 
     return obj
 }
