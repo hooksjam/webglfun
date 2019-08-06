@@ -57,6 +57,39 @@ function cube(side) {
    }
 }
 
+ /**
+  * Create a model of a cube, centered at the origin.  (This is not
+  * a particularly good format for a cube, since an IFS representation
+  * has a lot of redundancy.)
+  * @side the length of a side of the cube.  If not given, the value will be 1.
+  */
+function plane(side) {
+   var s = (side || 1)/2;
+   var coords = [];
+   var normals = [];
+   var texCoords = [];
+   var indices = [];
+   function face(xyz, nrm) {
+      var start = coords.length/3;
+      var i;
+      for (i = 0; i < 12; i++) {
+         coords.push(xyz[i]);
+      }
+      for (i = 0; i < 4; i++) {
+         normals.push(nrm[0],nrm[1],nrm[2]);
+      }
+      texCoords.push(0,0,1,0,1,1,0,1);
+      indices.push(start,start+1,start+2,start,start+2,start+3);
+   }
+   face( [-s,0,-s, -s,0,s, s,0,s, s,0,-s], [0,1,0] );
+   return {
+      vertexPositions: new Float32Array(coords),
+      vertexNormals: new Float32Array(normals),
+      vertexTextureCoords: new Float32Array(texCoords),
+      indices: new Uint16Array(indices)
+   }
+}
+
 /**
  * Creates a model of an annulus or disk lying in the xy plane,
  * centered at the origin.  (This is not a great representation,

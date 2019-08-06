@@ -5,6 +5,7 @@ var normalMatrix = mat3.create()    // matrix, derived from modelview matrix, fo
 var scale = 1
 var dt = 1000/60
 var time = 0
+var loopTimeout
 
 var fieldSize = 100000
 var seeds 
@@ -24,6 +25,10 @@ var sampleColors = [
     0.592, 0.701, 0.773]
 
 var framebuffer
+
+var numBodies = 1
+var bodies = []
+var G = 0.001
 
 var field = null
 var orb = null
@@ -45,7 +50,7 @@ var fieldTexture;
 function init() {
     glInit(() => {
 
-        rotator = new TrackballRotator(canvas, draw, 15)
+        rotator = new TrackballRotator(canvas, draw, 30)
         zoomer = new Zoomer(canvas) 
 
         cubemapTargets = [
@@ -64,14 +69,6 @@ function init() {
     }   
 }
 
-function loop() {
-    draw()
-
-    // setTimeout(loop, dt)
-
-    time += dt
-}
-
 function reset() {
     frequencies = [
         lerp(freqMin, freqMax, Math.random()),
@@ -83,8 +80,47 @@ function reset() {
 
     modelview = mat4.create()
 
+    // Test bodies
+    for(let i = 0; i < numBodies; i++) {
+        // Test cube
+        var color = defaultColors[Math.floor(Math.random()*defaultColors.length)]
+        color.push(1)
+        var mat = initMaterial("unlitUniformColor", {
+            "color": color
+        })
+        var body = initObject({
+            mat:mat,
+            model:uvSphere(1)
+        })
+
+        // Pick random distance
+        var distance = 10
+        var scale = 1 //+ Math.random()
+
+        // Pick random rotation
+        var rot = Math.random()*2*Math.PI
+
+        var position = vec3.fromValues(Math.cos(rot)*distance, 0, Math.sin(rot)*distance)
+        var speed = Math.sqrt(G/distance)
+        // var velocity = vec3.fromValues(0,0,0)
+        var velocity = vec3.create()
+        vec3.cross(velocity, position, vec3.fromValues(0, 1, 0)) 
+        vec3.normalize(velocity, velocity)
+        vec3.scale(velocity, velocity, speed)
+
+
+
+        bodies.push({
+            obj:body,
+            position:position,
+            velocity:velocity,
+            scale:scale
+        })
+
+    }
+
     // Test cube
-    var color = defaultColors[0]
+    /*var color = defaultColors[0]
     color.push(1)
     color = [0.4, 0.4, 0.4, 0.4]
     var mat = initMaterial("unlitUniformColor", {
@@ -93,7 +129,7 @@ function reset() {
     testCube = initObject({
         mat:mat,
         model:cube(1)
-    })
+    })*/
 
     /** Start by creating the cube map **/
     createCubemapAndSkybox();  
@@ -101,11 +137,92 @@ function reset() {
     // Create our center object
     orb = initObject({
         shader:"cubemapReflection",
-        model:uvSphere(3)
+        model:uvSphere(3, 128, 128)
     })
 
+    if(loopTimeout != null)
+        clearTimeout(loopTimeout)
+    loop()
+}
 
-    draw();
+function loop() {
+    renderCubemap()
+
+    var dv = vec3.create()
+    var dx = vec3.create()
+    var normalPos = vec3.create()
+    for(let i = 0; i < bodies.length; i++) {
+        // Acceleration of body
+        var body = bodies[i]
+        var distance = vec3.len(body.position)
+        vec3.normalize(normalPos, body.position)
+
+        vec3.scale(dv, normalPos, -dt*G/Math.pow(distance, 2))
+
+        vec3.add(body.velocity, body.velocity, dv)
+        vec3.scale(dx, body.velocity, dt)
+        vec3.add(body.position, body.position, dx)
+    }
+
+    draw()
+
+    loopTimeout = setTimeout(loop, dt)
+
+    time += dt
+}
+
+function draw() { 
+    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); 
+    gl.enable(gl.DEPTH_TEST) 
+
+    // Draw perspective object
+    mat4.perspective(projection, Math.PI/5, 1, 5, 50);
+    modelview = rotator.getViewMatrix();
+
+    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
+    if(zoomer) {
+        // var zoom = zoomer.getZoomScale()
+        // mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+    }
+    mat3.normalFromMat4(normalMatrix, modelview);
+
+    drawSkyboxAndRest()
+
+    if(orb) {
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap)
+
+        mat3.fromMat4(inverseViewTransform, modelview);
+        mat3.invert(inverseViewTransform,inverseViewTransform);
+        // console.log("Setting inverseViewTransform for orb")
+        orb.mat.setUniform("inverseViewTransform", inverseViewTransform)
+
+        orb.draw(modelview, projection, normalMatrix)
+    }
+
+    /*if(cube) {
+        gl.bindTexture(gl.TEXTURE_2D, fieldTexture);    
+        cube.draw(modelview, projection, normalMatrix)
+    }*/
+    //orb.draw()
+}
+
+function drawSkyboxAndRest() {
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap);    
+    if(skybox) {
+        skybox.draw(modelview, projection, normalMatrix)
+    }
+
+    // Spheres
+    for(let i = 0; i < bodies.length; i++) {
+        pushTransform(modelview)
+
+        // mat4.scale(modelview, modelview, bodies[i].scale)
+        mat4.translate(modelview, modelview, bodies[i].position);
+        bodies[i].obj.draw(modelview, projection)
+
+        popTransform(modelview)
+    }
 }
 
 function createCubemapAndSkybox() {
@@ -116,7 +233,7 @@ function createCubemapAndSkybox() {
         elements:fieldSize,
         drawMode: gl.POINTS
     })
- 
+    // field.draw = () => {}
     generateField()
 
     // Setup skybox with field texture
@@ -125,27 +242,23 @@ function createCubemapAndSkybox() {
         model: cube(15)
     })
 
-    skyboxCubemap = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap); 
-    for(i = 0; i < 6; i++) {
-        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    }
 
     renderSkybox()
 
     // Render cubemap
-    reflectionCubemap = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap); 
-    for (i = 0; i < 6; i++) {
-        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            //With null as the last parameter, the previous function allocates memory for the texture and fills it with zeros.
-    }  
 
     // Using our skybox with the newly rendered field texture, render a cubemap from a camera at the center
     renderCubemap()
 }
 
 function renderSkybox() {
+    // Setup
+    skyboxCubemap = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap); 
+    for(i = 0; i < 6; i++) {
+        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    } 
+
     gl.viewport(0,0,textureSize, textureSize)
     mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100);
 
@@ -170,6 +283,14 @@ function renderSkybox() {
 }
 
 function renderCubemap() {
+    // Setup
+    reflectionCubemap = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap); 
+    for (i = 0; i < 6; i++) {
+        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            //With null as the last parameter, the previous function allocates memory for the texture and fills it with zeros.
+    }  
+
     gl.viewport(0,0,textureSize, textureSize)
     mat4.perspective(projection, Math.PI/2, 1, 1, 100);  // Set projection to give 90-degree field of view.
 
@@ -222,65 +343,6 @@ function renderCubemap() {
     gl.viewport(0,0, canvas.width, canvas.height)
 }
 
-function drawSkyboxAndRest() {
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap);    
-    if(skybox) {
-        skybox.draw(modelview, projection, normalMatrix)
-    }
-
-    pushTransform(modelview)
-
-    // var translation = mat4.create();
-    // mat4.fromTranslation(translation, vec3.fromValues(1, 0, 0))
-    // mat4.add(modelview, modelview, translation)
-
-    var translation = vec3.create();
-    vec3.set (translation, -5.0, 0, 0);
-    mat4.translate (modelview, modelview, translation);
-
-    testCube.draw(modelview, projection)
-
-    // vec3.set (translation, 10.0, 0, 0);
-    // mat4.translate (modelview, modelview, translation);
-
-    popTransform(modelview)
-}
-
-function draw() { 
-    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); 
-    gl.enable(gl.DEPTH_TEST) 
-
-    // Draw perspective object
-    mat4.perspective(projection, Math.PI/5, 1, 10, 40);
-    modelview = rotator.getViewMatrix();
-
-    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
-    if(zoomer) {
-	    var zoom = zoomer.getZoomScale()
-	    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
-	}
-    mat3.normalFromMat4(normalMatrix, modelview);
-
-    drawSkyboxAndRest()
-
-    if(orb) {
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap)
-
-        mat3.fromMat4(inverseViewTransform, modelview);
-        mat3.invert(inverseViewTransform,inverseViewTransform);
-        // console.log("Setting inverseViewTransform for orb")
-        orb.mat.setUniform("inverseViewTransform", inverseViewTransform)
-
-        orb.draw(modelview, projection, normalMatrix)
-    }
-
-    /*if(cube) {
-        gl.bindTexture(gl.TEXTURE_2D, fieldTexture);    
-        cube.draw(modelview, projection, normalMatrix)
-    }*/
-    //orb.draw()
-}
 
 function getNoise(x, y, i) {
     noise.seed(seeds[i])

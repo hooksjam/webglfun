@@ -234,54 +234,60 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     return prog;
 }
 
-function initMaterial(name, options) {
-    if(!(name in shaders)) {
-        console.log("Shader '" + name + "' not defined in base, go there and do it")
+function initMaterial(shader, options = {}) {
+    if(!(shader in shaders)) {
+        console.log("Shader '" + shader + "' not defined in base, go there and do it")
         return
     }
+
+    console.log("INIT")
+    var label = options.name || shader
     // console.log("INIT MATERIALS " + name)
 
     // Load shader into script tag?
 
-    var prog
-    if("prog" in shaders[name] && shaders[name]["prog"] != null)
-        prog = shaders[name]["prog"]
-    else
-        prog = createProgram(gl, name + "-vshader-source", name + "-fshader-source");
-
-    shaders[name]["prog"] = prog
-    gl.useProgram(prog);
-
-    if(!(name in materials)) {
+    if(!(label in materials)) {
         // Create material
         var mat = {
-            name:name,
+            shader:shader,
+            name:label,
             attributes:{},
             uniforms:{}
         }
+        var prog
 
-        for(var atr in shaders[name]["attributes"]) {
+        mat.loadProgram = () => {
+            if("prog" in shaders[shader] && shaders[shader]["prog"] != null)
+                prog = shaders[shader]["prog"]
+            else {
+                prog = createProgram(gl, shader + "-vshader-source", shader + "-fshader-source");
+                shaders[shader]["prog"] = prog
+            }
+
+            gl.useProgram(prog); 
+            currentMat = mat.label
+        }
+        mat.loadProgram()
+
+        for(var atr in shaders[shader]["attributes"]) {
             mat["attributes"][atr] = {
                 "loc": gl.getAttribLocation(prog, "a_"+atr),
                 "buffer": gl.createBuffer(),
-                "type": shaders[name]["attributes"][atr]
+                "type": shaders[shader]["attributes"][atr]
             }
         }
 
-        // console.log("Shader is")
-        // console.log(shaders[name])
-
-        for(var uni in shaders[name]["uniforms"]) {
+        for(var uni in shaders[shader]["uniforms"]) {
             // console.log("")
             var loc = gl.getUniformLocation(prog, uni)
             // console.log("Getting uniform location for " + uni)
             mat["uniforms"][uni] = {
                 "loc": loc,//gl.getUniformLocation(prog, uni),
-                "type": shaders[name]["uniforms"][uni]
+                "type": shaders[shader]["uniforms"][uni]
             }
         }
 
-        if(!("indices" in shaders[name] && !shaders[name]["indices"])) {
+        if(!("indices" in shaders[shader] && !shaders[shader]["indices"])) {
             mat["indices"] = {
                 "buffer": gl.createBuffer()
             }
@@ -367,17 +373,17 @@ function initMaterial(name, options) {
         // console.log("INIT MAY")
         // console.log(mat)
 
-        materials[name] = mat
+        materials[label] = mat
     }
 
     // Set uniforms from options
     for(var uni in options) {
         // console.log("Setting uniform " + uni + " from start")
-        materials[name].setUniform(uni, options[uni])
+        materials[label].setUniform(uni, options[uni])
     }
 
-    currentMat = name
-    return materials[name]
+    // currentMat = label
+    return materials[label]
 }
 
 function typeDim(type) {
@@ -469,7 +475,11 @@ function initObject(options = {}) {
 
     obj.draw = (modelview, projection, normalMatrix, _dirty = false) => {
         if(currentMat != mat.name) {
-            initMaterial(mat.name)
+
+            // console.log("Current mat " + currentMat)
+            // console.log("My mat " + mat.name)
+            mat.loadProgram()
+            // initMaterial(mat.name)
             dirty = true
 
             for(var key in attributeValues) {
