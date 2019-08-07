@@ -468,15 +468,19 @@ function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, vi
 
 </script>
 <script>
-function Zoomer(canvas) {
+function Zoomer(canvas, startZoom = 1) {
     canvas.addEventListener("DOMMouseScroll", mousewheel, false);
     canvas.addEventListener("mousewheel", mousewheel, false);
+
+    function zclamp(v) {
+        return Math.max(Math.min(v, zoomInLimit), zoomOutLimit)
+    }
 
     var vec = [1,1,1]
 
     var delta = 0
     var velocity = 0
-    var scale = 1
+    var scale = startZoom
 
     function mousewheel( e)
     {
@@ -506,9 +510,18 @@ function Zoomer(canvas) {
     } 
 
     this.getZoomScale = function() {
-        scale = Math.max(scale+velocity,0)
-        velocity = velocity*(1-0.05)
-        return Math.pow(scale, 2)
+        scale += velocity
+        if(scale > 1) {
+            scale = 1
+            velocity = 0
+        } else if(scale < 0) {
+            scale = 0
+            velocity = 0
+        } else {
+            velocity = velocity*(1-0.05)
+        }
+        return scale
+        // return Math.pow(scale, 2)
         // return vec
 
     }
@@ -641,6 +654,39 @@ function cube(side) {
    face( [-s,-s,-s, s,-s,-s, s,-s,s, -s,-s,s], [0,-1,0] );
    face( [s,-s,-s, s,s,-s, s,s,s, s,-s,s], [1,0,0] );
    face( [-s,-s,-s, -s,-s,s, -s,s,s, -s,s,-s], [-1,0,0] );
+   return {
+      vertexPositions: new Float32Array(coords),
+      vertexNormals: new Float32Array(normals),
+      vertexTextureCoords: new Float32Array(texCoords),
+      indices: new Uint16Array(indices)
+   }
+}
+
+ /**
+  * Create a model of a cube, centered at the origin.  (This is not
+  * a particularly good format for a cube, since an IFS representation
+  * has a lot of redundancy.)
+  * @side the length of a side of the cube.  If not given, the value will be 1.
+  */
+function plane(side) {
+   var s = (side || 1)/2;
+   var coords = [];
+   var normals = [];
+   var texCoords = [];
+   var indices = [];
+   function face(xyz, nrm) {
+      var start = coords.length/3;
+      var i;
+      for (i = 0; i < 12; i++) {
+         coords.push(xyz[i]);
+      }
+      for (i = 0; i < 4; i++) {
+         normals.push(nrm[0],nrm[1],nrm[2]);
+      }
+      texCoords.push(0,0,1,0,1,1,0,1);
+      indices.push(start,start+1,start+2,start,start+2,start+3);
+   }
+   face( [-s,0,-s, -s,0,s, s,0,s, s,0,-s], [0,1,0] );
    return {
       vertexPositions: new Float32Array(coords),
       vertexNormals: new Float32Array(normals),
@@ -1478,6 +1524,18 @@ var shaders = {
         }
     },
 
+    "unlitUniformColor": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "color":"vec3"
+        }
+    },
+
     "unlitTexture": {
         source: "unitTexture.c",
         attributes: {
@@ -1531,8 +1589,36 @@ var shaders = {
             "specularColor":"vec3",
             "specularExponent":"float"
         }  
-    }
+    },
+
+    "skybox": {
+        source: "skybox.c",
+        attributes: {
+            "coords": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "skybox":"samplerCube",
+        }
+    },
+
+    "cubemapReflection": {
+        source: "cubemapReflection.c",
+        attributes: {
+            "coords": "vec3",
+            "normal": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "inverseViewTransform":"mat3",
+            "skybox":"samplerCube"
+        }
+    } 
 }
+
 var materials = {}
 var currentMat
 var gl   // The webgl context.
@@ -1556,11 +1642,11 @@ var rotator
 var zoomer
 
 function pushTransform(tran) {
-    transformStack.push(tran)
+    transformStack.push(mat4.clone(tran))
 }
 
-function popTransform() {
-    return transformStack.pop()
+function popTransform(tran) {
+    return mat4.copy(tran, transformStack.pop())
 }
 /**
  * initialization function that will be called when the page has loaded
@@ -1616,9 +1702,9 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     try {
         var vertexShaderSource = getTextContent( vertexShaderID );
         var fragmentShaderSource = getTextContent( fragmentShaderID );
-        console.log("PROGRAM")
-        console.log(vertexShaderSource)
-        console.log(fragmentShaderSource)
+        // console.log("PROGRAM")
+        // console.log(vertexShaderSource)
+        // console.log(fragmentShaderSource)
     }
     catch (e) {
         throw "Error: Could not get shader source code from script elements.";
@@ -1645,59 +1731,73 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     return prog;
 }
 
-function initMaterial(name, options) {
-    if(!(name in shaders)) {
-        console.log("Shader not defined in base, go there and do it")
+function initMaterial(shader, options = {}) {
+    if(!(shader in shaders)) {
+        console.log("Shader '" + shader + "' not defined in base, go there and do it")
         return
     }
+
+    console.log("INIT")
+    var label = options.name || shader
     // console.log("INIT MATERIALS " + name)
 
     // Load shader into script tag?
 
-    var prog
-    if("prog" in shaders[name] && shaders[name]["prog"] != null)
-        prog = shaders[name]["prog"]
-    else
-        prog = createProgram(gl, name + "-vshader-source", name + "-fshader-source");
-
-    shaders[name]["prog"] = prog
-    gl.useProgram(prog);
-
-    if(!(name in materials)) {
+    if(!(label in materials)) {
         // Create material
         var mat = {
-            name:name,
+            shader:shader,
+            name:label,
             attributes:{},
             uniforms:{}
         }
+        var prog
 
-        for(var atr in shaders[name]["attributes"]) {
+        mat.loadProgram = () => {
+            if("prog" in shaders[shader] && shaders[shader]["prog"] != null)
+                prog = shaders[shader]["prog"]
+            else {
+                prog = createProgram(gl, shader + "-vshader-source", shader + "-fshader-source");
+                shaders[shader]["prog"] = prog
+            }
+
+            gl.useProgram(prog); 
+            currentMat = mat.label
+        }
+        mat.loadProgram()
+
+        for(var atr in shaders[shader]["attributes"]) {
             mat["attributes"][atr] = {
                 "loc": gl.getAttribLocation(prog, "a_"+atr),
                 "buffer": gl.createBuffer(),
-                "type": shaders[name]["attributes"][atr]
+                "type": shaders[shader]["attributes"][atr]
             }
         }
 
-        for(var uni in shaders[name]["uniforms"]) {
+        for(var uni in shaders[shader]["uniforms"]) {
+            // console.log("")
+            var loc = gl.getUniformLocation(prog, uni)
+            // console.log("Getting uniform location for " + uni)
             mat["uniforms"][uni] = {
-                "loc": gl.getUniformLocation(prog, uni),
-                "type": shaders[name]["uniforms"][uni]
+                "loc": loc,//gl.getUniformLocation(prog, uni),
+                "type": shaders[shader]["uniforms"][uni]
             }
         }
 
-        if(!("indices" in shaders[name] && !shaders[name]["indices"])) {
+        if(!("indices" in shaders[shader] && !shaders[shader]["indices"])) {
             mat["indices"] = {
                 "buffer": gl.createBuffer()
             }
         }
 
         mat.setUniform = (uni, vals, write = true) => {
+            if(vals == null)
+                return
             if(uni in mat["uniforms"]) {
                 var type = mat["uniforms"][uni]["type"]
                 var u_loc = mat["uniforms"][uni]["loc"]
 
-                // console.log("Setting uniform " + uni)
+                // console.log("Setting uniform " + uni + " for " + name)
                 // console.log(type)
 
                 switch(type) {
@@ -1714,14 +1814,22 @@ function initMaterial(name, options) {
                         gl.uniform4f(u_loc, vals[0], vals[1], vals[2], vals[3]); 
                     break
                     case "mat3":
+
+                        // console.log("Setting uniform " + uni + " for " + name)
+                        // console.log(type)
+                        // console.log(u_loc)
                         gl.uniformMatrix3fv(u_loc, false, vals)
                     break
                     case "mat4":
                         gl.uniformMatrix4fv(u_loc, false, vals)
                     break
+                    case "skybox":
+                    break
+                    default:
+                    break
                 }
 
-                if(write)
+                if(write && type != "skybox")
                     mat["uniforms"][uni]["vals"] = vals
             }
         }
@@ -1759,17 +1867,20 @@ function initMaterial(name, options) {
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ind, gl.STATIC_DRAW);
             } 
         }
+        // console.log("INIT MAY")
+        // console.log(mat)
 
-        materials[name] = mat
+        materials[label] = mat
     }
 
     // Set uniforms from options
     for(var uni in options) {
-        materials[name].setUniform(uni, options[uni])
+        // console.log("Setting uniform " + uni + " from start")
+        materials[label].setUniform(uni, options[uni])
     }
 
-    currentMat = name
-    return materials[name]
+    // currentMat = label
+    return materials[label]
 }
 
 function typeDim(type) {
@@ -1786,12 +1897,15 @@ function typeDim(type) {
 }
 
 function initObject(options = {}) {
-    if(!("mat" in options) && !("name" in options)) {
+    console.log("Creating object with options")
+    console.log(options)
+
+    if(!("mat" in options) && !("shader" in options)) {
         console.log("Must include mat or name in options")
         return
     }
 
-    var mat = options.mat || initMaterial(options.name)
+    var mat = options.mat || initMaterial(options.shader)
     var drawMethod = options.drawMethod || "arrays"
     var drawMode = gl.TRIANGLES
     var streamMode = gl.STREAM_DRAW
@@ -1858,7 +1972,11 @@ function initObject(options = {}) {
 
     obj.draw = (modelview, projection, normalMatrix, _dirty = false) => {
         if(currentMat != mat.name) {
-            initMaterial(mat.name)
+
+            // console.log("Current mat " + currentMat)
+            // console.log("My mat " + mat.name)
+            mat.loadProgram()
+            // initMaterial(mat.name)
             dirty = true
 
             for(var key in attributeValues) {
@@ -1886,6 +2004,7 @@ function initObject(options = {}) {
             }
 
             for(var key in mat["uniforms"]) {
+                // console.log("Setting uniform " + key +"  from draw")
                 mat.setUniform(key, mat["uniforms"][key]["vals"], false)
             }
 
@@ -1938,8 +2057,15 @@ function initObject(options = {}) {
         drawMethod = "elements"
     }
 
-    if("model" in options)
-        obj.setModel(defaultObjects[options["model"]])
+    if("modelName" in options)
+        obj.setModel(defaultObjects[options["modelName"]])
+
+    if("model" in options) {
+        obj.setModel(options["model"])
+    }
+
+    // console.log("CREATING OBJECT")
+    // console.log(obj)
 
     return obj
 }</script>
@@ -2012,7 +2138,7 @@ function reset() {
     gl.viewport(0,0, canvas.width, canvas.height)
     /* Create Objects */
     field = initObject({
-        name:"unlitPoint",
+        shader:"unlitPoint",
         elements:fieldSize,
         drawMode: gl.POINTS
     })
@@ -2029,7 +2155,7 @@ function reset() {
 
     cube = initObject({
         mat:mat,
-        model:"cube"
+        modelName:"cube"
     })
 
     /* Start draw field */

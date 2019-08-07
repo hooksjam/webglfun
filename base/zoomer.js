@@ -1,13 +1,17 @@
 
-function Zoomer(canvas) {
+function Zoomer(canvas, startZoom = 1) {
     canvas.addEventListener("DOMMouseScroll", mousewheel, false);
     canvas.addEventListener("mousewheel", mousewheel, false);
+
+    function zclamp(v) {
+        return Math.max(Math.min(v, zoomInLimit), zoomOutLimit)
+    }
 
     var vec = [1,1,1]
 
     var delta = 0
     var velocity = 0
-    var scale = 1
+    var scale = startZoom
 
     function mousewheel( e)
     {
@@ -37,9 +41,18 @@ function Zoomer(canvas) {
     } 
 
     this.getZoomScale = function() {
-        scale = Math.max(scale+velocity,0)
-        velocity = velocity*(1-0.05)
-        return Math.pow(scale, 2)
+        scale += velocity
+        if(scale > 1) {
+            scale = 1
+            velocity = 0
+        } else if(scale < 0) {
+            scale = 0
+            velocity = 0
+        } else {
+            velocity = velocity*(1-0.05)
+        }
+        return scale
+        // return Math.pow(scale, 2)
         // return vec
 
     }

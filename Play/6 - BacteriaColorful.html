@@ -12,59 +12,6 @@
     }
 </style>
 
-<script type="x-shader/x-vertex" id="phong-vshader-source">
-    attribute vec3 a_coords;
-    attribute vec3 a_normal;
-    uniform mat4 modelview;
-    uniform mat4 projection;
-    varying vec3 v_normal;
-    varying vec3 v_eyeCoords;
-    void main() {
-        vec4 coords = vec4(a_coords,1.0);
-        vec4 eyeCoords = modelview * coords;
-        gl_Position = projection * eyeCoords;
-        v_normal = normalize(a_normal);
-        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird)
-    }
-</script>
-
-<script type="x-shader/x-fragment" id="phong-fshader-source">
-    #ifdef GL_FRAGMENT_PRECISION_HIGH
-       precision highp float;
-    #else
-       precision mediump float;
-    #endif
-    uniform mat3 normalMatrix;
-    uniform vec4 lightPosition;
-    uniform vec4 diffuseColor;
-    uniform vec3 specularColor;
-    uniform float specularExponent;
-    varying vec3 v_normal;
-    varying vec3 v_eyeCoords;
-    void main() {
-        vec3 N, L, R, V;  // vectors for lighting equation
-        N = normalize( normalMatrix*v_normal );
-        if ( lightPosition.w == 0.0 ) {
-            L = normalize( lightPosition.xyz );
-        }
-        else {
-            L = normalize( lightPosition.xyz/lightPosition.w - v_eyeCoords );
-        }
-        R = -reflect(L,N);
-        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
-        if ( dot(L,N) <= 0.0 ) {
-            gl_FragColor = vec4(0,0,0,1);
-        }
-        else {
-            vec3 color = 0.8*dot(L,N) * diffuseColor.rgb;
-            if (dot(R,V) > 0.0) {
-                color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
-            }
-            gl_FragColor = vec4(color, diffuseColor.a);
-        }
-    }
-</script>
-
 
 <script type="x-shader/x-vertex" id="basic-vshader-source">
   attribute vec3 a_coords;
@@ -94,35 +41,24 @@
   }     
 </script>
 
+<script>function shuffle(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
 
-<script type="x-shader/x-vertex" id="point-vshader-source">
-  attribute vec3 a_coords;
-  attribute vec3 a_color;
-  attribute float a_size;
-  varying vec3 v_color;
-  uniform mat4 modelview;
-  uniform mat4 projection; 
-  void main() {
-    gl_PointSize = a_size; 
-    vec4 coords = vec4(a_coords, 1.0);
-    vec4 eyeCoords = modelview * coords;
-    gl_Position = projection * eyeCoords;
-    v_color = a_color;
-  } 
-</script>
+function lerp(a, b, f) {
+    return a + f * (b - a)
+}
 
-<script type="x-shader/x-fragment" id="point-fshader-source">
-  #ifdef GL_FRAGMENT_PRECISION_HIGH
-    precision highp float;
-  #else
-    precision mediump float;
-  #endif
-  varying vec3 v_color;
-  void main() {
-    gl_FragColor = vec4(v_color, 1.0);
-  }     
-</script>
-
+function clamp(v, min, max) {
+    return Math.max(Math.min(v, max), min)
+}</script>
 <script>/**
  * @fileoverview gl-matrix - High performance matrix and vector operations
  * @author Brandon Jones
@@ -409,1034 +345,6 @@ function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, vi
 }
 
 
-</script>
-<script>function shuffle(a) {
-    var j, x, i;
-    for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(Math.random() * (i + 1));
-        x = a[i];
-        a[i] = a[j];
-        a[j] = x;
-    }
-    return a;
-}
-
-function lerp(a, b, f) {
-    return a + f * (b - a)
-}
-
-function clamp(v, min, max) {
-    return Math.max(Math.min(v, max), min)
-}</script>
-<script>
-function Zoomer(canvas, startZoom = 1) {
-    canvas.addEventListener("DOMMouseScroll", mousewheel, false);
-    canvas.addEventListener("mousewheel", mousewheel, false);
-
-    function zclamp(v) {
-        return Math.max(Math.min(v, zoomInLimit), zoomOutLimit)
-    }
-
-    var vec = [1,1,1]
-
-    var delta = 0
-    var velocity = 0
-    var scale = startZoom
-
-    function mousewheel( e)
-    {
-        var amount = 100; // parameter
-
-        // get wheel direction 
-        delta = ((typeof e.wheelDelta != "undefined")?(-e.wheelDelta):e.detail);
-
-        velocity -= delta*0.0005
-
-        // do calculations, I'm not using any three.js internal methods here, maybe there is a better way of doing this
-        // applies movement in the direction of (0,0,0), assuming this is where the camera is pointing
-        /*var cPos = camera.position;
-        var r = cPos.x*cPos.x + cPos.y*cPos.y;
-        var sqr = Math.sqrt(r);
-        var sqrZ = Math.sqrt(cPos.z*cPos.z + r);
-
-        var nx = cPos.x + ((r==0)?0:(d * cPos.x/sqr));
-        var ny = cPos.y + ((r==0)?0:(d * cPos.y/sqr));
-        var nz = cPos.z + ((sqrZ==0)?0:(d * cPos.z/sqrZ));
-
-        // verify we're applying valid numbers
-        if (isNaN(nx) || isNaN(ny) || isNaN(nz))
-          return;
-
-        vec = [1+nx, 1+ny, 1+nz]*/
-    } 
-
-    this.getZoomScale = function() {
-        scale += velocity
-        if(scale > 1) {
-            scale = 1
-            velocity = 0
-        } else if(scale < 0) {
-            scale = 0
-            velocity = 0
-        } else {
-            velocity = velocity*(1-0.05)
-        }
-        return scale
-        // return Math.pow(scale, 2)
-        // return vec
-
-    }
-    var unitx = new Array(3);
-    var unity = new Array(3);
-    var unitz = new Array(3);
-    var viewZ;  // view distance; z-coord in eye coordinates;
-    var center; // center of view; rotation is about this point; default is [0,0,0] 
-    this.setView = function( viewDistance, viewpointDirection, viewUp ) {
-        unitz = (viewpointDirection === undefined)? [0,0,10] : viewpointDirection;
-        viewUp = (viewUp === undefined)? [0,1,0] : viewUp;
-        viewZ = viewDistance;
-        normalize(unitz, unitz);
-        copy(unity,unitz);
-        scale(unity, unity, dot(unitz,viewUp));
-        subtract(unity,viewUp,unity);
-        normalize(unity,unity);
-        cross(unitx,unity,unitz);
-    }
-    this.getZoomMatrix = function() {
-        var mat = [ unitx[0], unity[0], unitz[0], 0,
-                unitx[1], unity[1], unitz[1], 0, 
-                unitx[2], unity[2], unitz[2], 0,
-                0, 0, 0, 1 ];
-        if (center !== undefined) {  // multiply on left by translation by rotationCenter, on right by translation by -rotationCenter
-            var t0 = center[0] - mat[0]*center[0] - mat[4]*center[1] - mat[8]*center[2];
-            var t1 = center[1] - mat[1]*center[0] - mat[5]*center[1] - mat[9]*center[2];
-            var t2 = center[2] - mat[2]*center[0] - mat[6]*center[1] - mat[10]*center[2];
-            mat[12] = t0;
-            mat[13] = t1;
-            mat[14] = t2;
-        }
-        if (viewZ !== undefined) {
-            mat[14] -= viewZ;
-        }
-        return mat;
-    }
-    function dot(v,w) {
-        return v[0]*w[0] + v[1]*w[1] + v[2]*w[2];
-    }
-    function length(v) {
-        return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    }
-    function normalize(v,w) {
-        var d = length(w);
-        v[0] = w[0]/d;
-        v[1] = w[1]/d;
-        v[2] = w[2]/d;
-    }
-    function copy(v,w) {
-        v[0] = w[0];
-        v[1] = w[1];
-        v[2] = w[2];
-    }
-    function add(sum,v,w) {
-        sum[0] = v[0] + w[0];
-        sum[1] = v[1] + w[1];
-        sum[2] = v[2] + w[2];
-    }
-    function subtract(dif,v,w) {
-        dif[0] = v[0] - w[0];
-        dif[1] = v[1] - w[1];
-        dif[2] = v[2] - w[2];
-    }
-    function scale(ans,v,num) {
-        ans[0] = v[0] * num;
-        ans[1] = v[1] * num;
-        ans[2] = v[2] * num;
-    }
-    function cross(c,v,w) {
-        var x = v[1]*w[2] - v[2]*w[1];
-        var y = v[2]*w[0] - v[0]*w[2];
-        var z = v[0]*w[1] - v[1]*w[0];
-        c[0] = x;
-        c[1] = y;
-        c[2] = z;
-    }
-}
-
-
-</script>
-<script>
-/**
- * The functions in this file create models in an
- * IFS format that can be drawn using gl.drawElements
- * with primitive type gl.TRIANGLES.  Objects have
- * vertex coordinates, normal vectors, and texture
- * coordinates for each vertex, plus a list of indicies
- * for the element array buffer.  The return value
- * of each function is an object, model, with properties:
- * 
- *    model.vertexPositions -- the vertex coordinates;
- *    model.vertexNormals -- the normal vectors;
- *    model.vertexTextureCoords -- the texture coordinates;
- *    model.indices -- the face indices.
- *
- * The first three properties are of type Float32Array, while
- * model.indicesis of type Uint16Array.
- *
- */
-
- 
- /**
-  * Create a model of a cube, centered at the origin.  (This is not
-  * a particularly good format for a cube, since an IFS representation
-  * has a lot of redundancy.)
-  * @side the length of a side of the cube.  If not given, the value will be 1.
-  */
-function cube(side) {
-   var s = (side || 1)/2;
-   var coords = [];
-   var normals = [];
-   var texCoords = [];
-   var indices = [];
-   function face(xyz, nrm) {
-      var start = coords.length/3;
-      var i;
-      for (i = 0; i < 12; i++) {
-         coords.push(xyz[i]);
-      }
-      for (i = 0; i < 4; i++) {
-         normals.push(nrm[0],nrm[1],nrm[2]);
-      }
-      texCoords.push(0,0,1,0,1,1,0,1);
-      indices.push(start,start+1,start+2,start,start+2,start+3);
-   }
-   face( [-s,-s,s, s,-s,s, s,s,s, -s,s,s], [0,0,1] );
-   face( [-s,-s,-s, -s,s,-s, s,s,-s, s,-s,-s], [0,0,-1] );
-   face( [-s,s,-s, -s,s,s, s,s,s, s,s,-s], [0,1,0] );
-   face( [-s,-s,-s, s,-s,-s, s,-s,s, -s,-s,s], [0,-1,0] );
-   face( [s,-s,-s, s,s,-s, s,s,s, s,-s,s], [1,0,0] );
-   face( [-s,-s,-s, -s,-s,s, -s,s,s, -s,s,-s], [-1,0,0] );
-   return {
-      vertexPositions: new Float32Array(coords),
-      vertexNormals: new Float32Array(normals),
-      vertexTextureCoords: new Float32Array(texCoords),
-      indices: new Uint16Array(indices)
-   }
-}
-
- /**
-  * Create a model of a cube, centered at the origin.  (This is not
-  * a particularly good format for a cube, since an IFS representation
-  * has a lot of redundancy.)
-  * @side the length of a side of the cube.  If not given, the value will be 1.
-  */
-function plane(side) {
-   var s = (side || 1)/2;
-   var coords = [];
-   var normals = [];
-   var texCoords = [];
-   var indices = [];
-   function face(xyz, nrm) {
-      var start = coords.length/3;
-      var i;
-      for (i = 0; i < 12; i++) {
-         coords.push(xyz[i]);
-      }
-      for (i = 0; i < 4; i++) {
-         normals.push(nrm[0],nrm[1],nrm[2]);
-      }
-      texCoords.push(0,0,1,0,1,1,0,1);
-      indices.push(start,start+1,start+2,start,start+2,start+3);
-   }
-   face( [-s,0,-s, -s,0,s, s,0,s, s,0,-s], [0,1,0] );
-   return {
-      vertexPositions: new Float32Array(coords),
-      vertexNormals: new Float32Array(normals),
-      vertexTextureCoords: new Float32Array(texCoords),
-      indices: new Uint16Array(indices)
-   }
-}
-
-/**
- * Creates a model of an annulus or disk lying in the xy plane,
- * centered at the origin.  (This is not a great representation,
- * since all the normals are the same.)
- * @param innerRadius the radius of the hole in the radius; a value of
- *    zero will give a disk rather than a ring.  If not present,
- *    the default value is 0.25.
- * @param outerRadius the radius of the ring, from the center to teh
- *    outer edge.  Must be greater than innerRadius.  If not provided,
- *    the default value is 2*innerRadius or is 0.5 if innerRadius is 0.
- * @slices the number of radial subdivisions in the circular approximation
- *    of an annulus.  If not provided, the value will be 32.
- */
-function ring(innerRadius, outerRadius, slices) {
-   if (arguments.length == 0)
-      innerRadius = 0.25;
-   outerRadius = outerRadius || innerRadius * 2 || 0.5;
-   slices = slices || 32;
-   var vertexCount, vertices, normals, texCoords, indices, i;
-   vertexCount = (innerRadius == 0)? slices + 1 : slices * 2;
-   vertices = new Float32Array( 3*vertexCount );
-   normals = new Float32Array( 3* vertexCount );
-   texCoords = new Float32Array( 2*vertexCount );
-   indices = new Uint16Array( innerRadius == 0 ?  3*slices : 3*2*slices );
-   var d = 2*Math.PI/slices;
-   var k = 0;
-   var t = 0;
-   var n = 0;
-   if (innerRadius == 0) {
-      for (i = 0; i < slices; i++) {
-         c = Math.cos(d*i);
-         s = Math.sin(d*i);
-         vertices[k++] = c*outerRadius;
-         vertices[k++] = s*outerRadius;
-         vertices[k++] = 0;
-         texCoords[t++] = 0.5 + 0.5*c;
-         texCoords[t++] = 0.5 + 0.5*s;
-         indices[n++] = slices;
-         indices[n++] = i;
-         indices[n++] = i == slices-1 ? 0 : i + 1;
-      }
-      vertices[k++] = vertices[k++] = vertices[k++] = 0;
-      texCoords[t++] = texCoords[t++] = 0;
-   }
-   else {
-      var r = innerRadius / outerRadius;
-      for (i = 0; i < slices; i++) {
-         c = Math.cos(d*i);
-         s = Math.sin(d*i);
-         vertices[k++] = c*innerRadius;
-         vertices[k++] = s*innerRadius;
-         vertices[k++] = 0;
-         texCoords[t++] = 0.5 + 0.5*c*r;
-         texCoords[t++] = 0.5 + 0.5*s*r;
-         vertices[k++] = c*outerRadius;
-         vertices[k++] = s*outerRadius;
-         vertices[k++] = 0;
-         texCoords[t++] = 0.5 + 0.5*c;
-         texCoords[t++] = 0.5 + 0.5*s;
-      }
-      for (i = 0; i < slices - 1; i++) {
-         indices[n++] = 2*i;
-         indices[n++] = 2*i+1;
-         indices[n++] = 2*i+3;
-         indices[n++] = 2*i;
-         indices[n++] = 2*i+3;
-         indices[n++] = 2*i+2;
-      }
-      indices[n++] = 2*i;
-      indices[n++] = 2*i+1;
-      indices[n++] = 1;
-      indices[n++] = 2*i;
-      indices[n++] = 1;
-      indices[n++] = 0;
-   }
-   for (i = 0; i < vertexCount; i++) {
-      normals[3*i] = normals[3*i+1] = 0;
-      normals[3*i+2] = 1;
-   }
-   return {
-       vertexPositions: vertices,
-       vertexNormals: normals,
-       vertexTextureCoords: texCoords,
-       indices: indices
-   };
-}
-
-/**
- * Create a model of a sphere.  The z-axis is the axis of the sphere,
- * with the north pole on the positive z-axis and the center at (0,0,0).
- * @param radius the radius of the sphere, default 0.5 if not specified.
- * @param slices the number of lines of longitude, default 32
- * @param stacks the number of lines of latitude plus 1, default 16.  (This 
- *    is the number of vertical slices, bounded by lines of latitude, the
- *    north pole and the south pole.)
- */
-function uvSphere(radius, slices, stacks) {
-   radius = radius || 0.5;
-   slices = slices || 32;
-   stacks = stacks || 16;
-   var vertexCount = (slices+1)*(stacks+1);
-   var vertices = new Float32Array( 3*vertexCount );
-   var normals = new Float32Array( 3* vertexCount );
-   var texCoords = new Float32Array( 2*vertexCount );
-   var indices = new Uint16Array( 2*slices*stacks*3 );
-   var du = 2*Math.PI/slices;
-   var dv = Math.PI/stacks;
-   var i,j,u,v,x,y,z;
-   var indexV = 0;
-   var indexT = 0;
-   for (i = 0; i <= stacks; i++) {
-      v = -Math.PI/2 + i*dv;
-      for (j = 0; j <= slices; j++) {
-         u = j*du;
-         x = Math.cos(u)*Math.cos(v);
-         y = Math.sin(u)*Math.cos(v);
-         z = Math.sin(v);
-         vertices[indexV] = radius*x;
-         normals[indexV++] = x;
-         vertices[indexV] = radius*y;
-         normals[indexV++] = y;
-         vertices[indexV] = radius*z;
-         normals[indexV++] = z;
-         texCoords[indexT++] = j/slices;
-         texCoords[indexT++] = i/stacks;
-      } 
-   }
-   var k = 0;
-   for (j = 0; j < stacks; j++) {
-      var row1 = j*(slices+1);
-      var row2 = (j+1)*(slices+1);
-      for (i = 0; i < slices; i++) {
-          indices[k++] = row1 + i;
-          indices[k++] = row2 + i + 1;
-          indices[k++] = row2 + i;
-          indices[k++] = row1 + i;
-          indices[k++] = row1 + i + 1;
-          indices[k++] = row2 + i + 1;
-      }
-   }
-   return {
-       vertexPositions: vertices,
-       vertexNormals: normals,
-       vertexTextureCoords: texCoords,
-       indices: indices
-   };
-}
-
-
-/**
- * Create a model of a torus (surface of a doughnut).  The z-axis goes through the doughnut hole,
- * and the center of the torus is at (0,0,0).
- * @param outerRadius the distance from the center to the outside of the tube, 0.5 if not specified.
- * @param innerRadius the distance from the center to the inside of the tube, outerRadius/3 if not
- *    specified.  (This is the radius of the doughnut hole.)
- * @param slices the number of lines of longitude, default 32.  These are slices parallel to the
- * z-axis and go around the tube the short way (through the hole).
- * @param stacks the number of lines of latitude plus 1, default 16.  These lines are perpendicular
- * to the z-axis and go around the tube the long way (arouind the hole).
- */
-function uvTorus(outerRadius, innerRadius, slices, stacks) {
-   outerRadius = outerRadius || 0.5;
-   innerRadius = innerRadius || outerRadius/3;
-   slices = slices || 32;
-   stacks = stacks || 16;
-   var vertexCount = (slices+1)*(stacks+1);
-   var vertices = new Float32Array( 3*vertexCount );
-   var normals = new Float32Array( 3* vertexCount );
-   var texCoords = new Float32Array( 2*vertexCount );
-   var indices = new Uint16Array( 2*slices*stacks*3 );
-   var du = 2*Math.PI/slices;
-   var dv = 2*Math.PI/stacks;
-   var centerRadius = (innerRadius+outerRadius)/2;
-   var tubeRadius = outerRadius - centerRadius;
-   var i,j,u,v,cx,cy,sin,cos,x,y,z;
-   var indexV = 0;
-   var indexT = 0;
-   for (j = 0; j <= stacks; j++) {
-      v = -Math.PI + j*dv;
-      cos = Math.cos(v);
-      sin = Math.sin(v);
-      for (i = 0; i <= slices; i++) {
-         u = i*du;
-         cx = Math.cos(u);
-         cy = Math.sin(u);
-         x = cx*(centerRadius + tubeRadius*cos);
-         y = cy*(centerRadius + tubeRadius*cos);
-         z = sin*tubeRadius;
-         vertices[indexV] = x;
-         normals[indexV++] = cx*cos;
-         vertices[indexV] = y
-         normals[indexV++] = cy*cos;
-         vertices[indexV] = z
-         normals[indexV++] = sin;
-         texCoords[indexT++] = i/slices;
-         texCoords[indexT++] = j/stacks;
-      } 
-   }
-   var k = 0;
-   for (j = 0; j < stacks; j++) {
-      var row1 = j*(slices+1);
-      var row2 = (j+1)*(slices+1);
-      for (i = 0; i < slices; i++) {
-          indices[k++] = row1 + i;
-          indices[k++] = row2 + i + 1;
-          indices[k++] = row2 + i;
-          indices[k++] = row1 + i;
-          indices[k++] = row1 + i + 1;
-          indices[k++] = row2 + i + 1;
-      }
-   }
-   return {
-       vertexPositions: vertices,
-       vertexNormals: normals,
-       vertexTextureCoords: texCoords,
-       indices: indices
-   };
-}
-
-/**
- * Defines a model of a cylinder.  The axis of the cylinder is the z-axis,
- * and the center is at (0,0,0).
- * @param radius the radius of the cylinder
- * @param height the height of the cylinder.  The cylinder extends from -height/2
- * to height/2 along the z-axis.
- * @param slices the number of slices, like the slices of an orange.
- * @param noTop if missing or false, the cylinder has a top; if set to true,
- *   the cylinder has a top. The top is a disk at the positive end of the cylinder.
- * @param noBottom if missing or false, the cylinder has a bottom; if set to true,
- *   the cylinder has a bottom. The bottom is a disk at the negtive end of the cylinder.
- */
-function uvCylinder(radius, height, slices, noTop, noBottom) {
-   radius = radius || 0.5;
-   height = height || 2*radius;
-   slices = slices || 32;
-   var vertexCount = 2*(slices+1);
-   if (!noTop)
-      vertexCount += slices + 2;
-   if (!noBottom)
-      vertexCount += slices + 2;
-   var triangleCount = 2*slices;
-   if (!noTop)
-      triangleCount += slices;
-   if (!noBottom)
-      triangleCount += slices; 
-   var vertices = new Float32Array(vertexCount*3);
-   var normals = new Float32Array(vertexCount*3);
-   var texCoords = new Float32Array(vertexCount*2);
-   var indices = new Uint16Array(triangleCount*3);
-   var du = 2*Math.PI / slices;
-   var kv = 0;
-   var kt = 0;
-   var k = 0;
-   var i,u;
-   for (i = 0; i <= slices; i++) {
-      u = i*du;
-      var c = Math.cos(u);
-      var s = Math.sin(u);
-      vertices[kv] = c*radius;
-      normals[kv++] = c;
-      vertices[kv] = s*radius;
-      normals[kv++] = s;
-      vertices[kv] = -height/2;
-      normals[kv++] = 0;
-      texCoords[kt++] = i/slices;
-      texCoords[kt++] = 0;
-      vertices[kv] = c*radius;
-      normals[kv++] = c;
-      vertices[kv] = s*radius;
-      normals[kv++] = s;
-      vertices[kv] = height/2;
-      normals[kv++] = 0;
-      texCoords[kt++] = i/slices;
-      texCoords[kt++] = 1;
-   }
-   for (i = 0; i < slices; i++) {
-          indices[k++] = 2*i;
-          indices[k++] = 2*i+3;
-          indices[k++] = 2*i+1;
-          indices[k++] = 2*i;
-          indices[k++] = 2*i+2;
-          indices[k++] = 2*i+3;
-   }
-   var startIndex = kv/3;
-   if (!noBottom) {
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = -height/2;
-      normals[kv++] = -1;
-      texCoords[kt++] = 0.5;
-      texCoords[kt++] = 0.5; 
-      for (i = 0; i <= slices; i++) {
-         u = 2*Math.PI - i*du;
-         var c = Math.cos(u);
-         var s = Math.sin(u);
-         vertices[kv] = c*radius;
-         normals[kv++] = 0;
-         vertices[kv] = s*radius;
-         normals[kv++] = 0;
-         vertices[kv] = -height/2;
-         normals[kv++] = -1;
-         texCoords[kt++] = 0.5 - 0.5*c;
-         texCoords[kt++] = 0.5 + 0.5*s;
-      }
-      for (i = 0; i < slices; i++) {
-         indices[k++] = startIndex;
-         indices[k++] = startIndex + i + 1;
-         indices[k++] = startIndex + i + 2;
-      }
-   }
-   var startIndex = kv/3;
-   if (!noTop) {
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = height/2;
-      normals[kv++] = 1;
-      texCoords[kt++] = 0.5;
-      texCoords[kt++] = 0.5; 
-      for (i = 0; i <= slices; i++) {
-         u = i*du;
-         var c = Math.cos(u);
-         var s = Math.sin(u);
-         vertices[kv] = c*radius;
-         normals[kv++] = 0;
-         vertices[kv] = s*radius;
-         normals[kv++] = 0;
-         vertices[kv] = height/2;
-         normals[kv++] = 1;
-         texCoords[kt++] = 0.5 + 0.5*c;
-         texCoords[kt++] = 0.5 + 0.5*s;
-      }
-      for (i = 0; i < slices; i++) {
-         indices[k++] = startIndex;
-         indices[k++] = startIndex + i + 1;
-         indices[k++] = startIndex + i + 2;
-      }
-   }
-   return {
-       vertexPositions: vertices,
-       vertexNormals: normals,
-       vertexTextureCoords: texCoords,
-       indices: indices
-   };
-}
-
-
-/**
- * Defines a model of a cone.  The axis of the cone is the z-axis,
- * and the center is at (0,0,0).
- * @param radius the radius of the cone
- * @param height the height of the cone.  The cone extends from -height/2
- * to height/2 along the z-axis, with the tip at (0,0,height/2).
- * @param slices the number of slices, like the slices of an orange.
- * @param noBottom if missing or false, the cone has a bottom; if set to true,
- *   the cone has a bottom. The bottom is a disk at the wide end of the cone.
- */
-function uvCone(radius, height, slices, noBottom) {
-   radius = radius || 0.5;
-   height = height || 2*radius;
-   slices = slices || 32;
-   var fractions = [ 0, 0.5, 0.75, 0.875, 0.9375 ];
-   var vertexCount = fractions.length*(slices+1) + slices;
-   if (!noBottom)
-      vertexCount += slices + 2;
-   var triangleCount = (fractions.length-1)*slices*2 + slices;
-   if (!noBottom)
-      triangleCount += slices;
-   var vertices = new Float32Array(vertexCount*3);
-   var normals = new Float32Array(vertexCount*3);
-   var texCoords = new Float32Array(vertexCount*2);
-   var indices = new Uint16Array(triangleCount*3);
-   var normallength = Math.sqrt(height*height+radius*radius);
-   var n1 = height/normallength;
-   var n2 = radius/normallength; 
-   var du = 2*Math.PI / slices;
-   var kv = 0;
-   var kt = 0;
-   var k = 0;
-   var i,j,u;
-   for (j = 0; j < fractions.length; j++) {
-      var uoffset = (j % 2 == 0? 0 : 0.5);
-      for (i = 0; i <= slices; i++) {
-         var h1 = -height/2 + fractions[j]*height;
-         u = (i+uoffset)*du;
-         var c = Math.cos(u);
-         var s = Math.sin(u);
-         vertices[kv] = c*radius*(1-fractions[j]);
-         normals[kv++] = c*n1;
-         vertices[kv] = s*radius*(1-fractions[j]);
-         normals[kv++] = s*n1;
-         vertices[kv] = h1;
-         normals[kv++] = n2;
-         texCoords[kt++] = (i+uoffset)/slices;
-         texCoords[kt++] = fractions[j];
-      }
-   }
-   var k = 0;
-   for (j = 0; j < fractions.length-1; j++) {
-      var row1 = j*(slices+1);
-      var row2 = (j+1)*(slices+1);
-      for (i = 0; i < slices; i++) {
-          indices[k++] = row1 + i;
-          indices[k++] = row2 + i + 1;
-          indices[k++] = row2 + i;
-          indices[k++] = row1 + i;
-          indices[k++] = row1 + i + 1;
-          indices[k++] = row2 + i + 1;
-      }
-   }
-   var start = kv/3 - (slices+1);
-   for (i = 0; i < slices; i++) { // slices points at top, with different normals, texcoords
-      u = (i+0.5)*du;
-      var c = Math.cos(u);
-      var s = Math.sin(u);
-      vertices[kv] = 0;
-      normals[kv++] = c*n1;
-      vertices[kv] = 0;
-      normals[kv++] = s*n1;
-      vertices[kv] = height/2;
-      normals[kv++] = n2;
-      texCoords[kt++] = (i+0.5)/slices;
-      texCoords[kt++] = 1;
-   }
-   for (i = 0; i < slices; i++) {
-      indices[k++] = start+i;
-      indices[k++] = start+i+1;
-      indices[k++] = start+(slices+1)+i;
-   }
-   if (!noBottom) {
-      var startIndex = kv/3;
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = 0;
-      normals[kv++] = 0;
-      vertices[kv] = -height/2;
-      normals[kv++] = -1;
-      texCoords[kt++] = 0.5;
-      texCoords[kt++] = 0.5; 
-      for (i = 0; i <= slices; i++) {
-         u = 2*Math.PI - i*du;
-         var c = Math.cos(u);
-         var s = Math.sin(u);
-         vertices[kv] = c*radius;
-         normals[kv++] = 0;
-         vertices[kv] = s*radius;
-         normals[kv++] = 0;
-         vertices[kv] = -height/2;
-         normals[kv++] = -1;
-         texCoords[kt++] = 0.5 - 0.5*c;
-         texCoords[kt++] = 0.5 + 0.5*s;
-      }
-      for (i = 0; i < slices; i++) {
-         indices[k++] = startIndex;
-         indices[k++] = startIndex + i + 1;
-         indices[k++] = startIndex + i + 2;
-      }
-   } 
-   return {
-       vertexPositions: vertices,
-       vertexNormals: normals,
-       vertexTextureCoords: texCoords,
-       indices: indices
-   };   
-}
-
-</script>
-<script>
-/*
- * A speed-improved perlin and simplex noise algorithms for 2D.
- *
- * Based on example code by Stefan Gustavson (stegu@itn.liu.se).
- * Optimisations by Peter Eastman (peastman@drizzle.stanford.edu).
- * Better rank ordering method by Stefan Gustavson in 2012.
- * Converted to Javascript by Joseph Gentle.
- *
- * Version 2012-03-09
- *
- * This code was placed in the public domain by its original author,
- * Stefan Gustavson. You may use it as you see fit, but
- * attribution is appreciated.
- *
- */
-
-(function(global){
-  var module = global.noise = {};
-
-  function Grad(x, y, z) {
-    this.x = x; this.y = y; this.z = z;
-  }
-  
-  Grad.prototype.dot2 = function(x, y) {
-    return this.x*x + this.y*y;
-  };
-
-  Grad.prototype.dot3 = function(x, y, z) {
-    return this.x*x + this.y*y + this.z*z;
-  };
-
-  var grad3 = [new Grad(1,1,0),new Grad(-1,1,0),new Grad(1,-1,0),new Grad(-1,-1,0),
-               new Grad(1,0,1),new Grad(-1,0,1),new Grad(1,0,-1),new Grad(-1,0,-1),
-               new Grad(0,1,1),new Grad(0,-1,1),new Grad(0,1,-1),new Grad(0,-1,-1)];
-
-  var p = [151,160,137,91,90,15,
-  131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-  190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-  88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
-  77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-  102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
-  135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
-  5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-  223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
-  129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
-  251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
-  49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
-  138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
-  // To remove the need for index wrapping, double the permutation table length
-  var perm = new Array(512);
-  var gradP = new Array(512);
-
-  // This isn't a very good seeding function, but it works ok. It supports 2^16
-  // different seed values. Write something better if you need more seeds.
-  module.seed = function(seed) {
-    if(seed > 0 && seed < 1) {
-      // Scale the seed out
-      seed *= 65536;
-    }
-
-    seed = Math.floor(seed);
-    if(seed < 256) {
-      seed |= seed << 8;
-    }
-
-    for(var i = 0; i < 256; i++) {
-      var v;
-      if (i & 1) {
-        v = p[i] ^ (seed & 255);
-      } else {
-        v = p[i] ^ ((seed>>8) & 255);
-      }
-
-      perm[i] = perm[i + 256] = v;
-      gradP[i] = gradP[i + 256] = grad3[v % 12];
-    }
-  };
-
-  module.seed(0);
-
-  /*
-  for(var i=0; i<256; i++) {
-    perm[i] = perm[i + 256] = p[i];
-    gradP[i] = gradP[i + 256] = grad3[perm[i] % 12];
-  }*/
-
-  // Skewing and unskewing factors for 2, 3, and 4 dimensions
-  var F2 = 0.5*(Math.sqrt(3)-1);
-  var G2 = (3-Math.sqrt(3))/6;
-
-  var F3 = 1/3;
-  var G3 = 1/6;
-
-  // 2D simplex noise
-  module.simplex2 = function(xin, yin) {
-    var n0, n1, n2; // Noise contributions from the three corners
-    // Skew the input space to determine which simplex cell we're in
-    var s = (xin+yin)*F2; // Hairy factor for 2D
-    var i = Math.floor(xin+s);
-    var j = Math.floor(yin+s);
-    var t = (i+j)*G2;
-    var x0 = xin-i+t; // The x,y distances from the cell origin, unskewed.
-    var y0 = yin-j+t;
-    // For the 2D case, the simplex shape is an equilateral triangle.
-    // Determine which simplex we are in.
-    var i1, j1; // Offsets for second (middle) corner of simplex in (i,j) coords
-    if(x0>y0) { // lower triangle, XY order: (0,0)->(1,0)->(1,1)
-      i1=1; j1=0;
-    } else {    // upper triangle, YX order: (0,0)->(0,1)->(1,1)
-      i1=0; j1=1;
-    }
-    // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
-    // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
-    // c = (3-sqrt(3))/6
-    var x1 = x0 - i1 + G2; // Offsets for middle corner in (x,y) unskewed coords
-    var y1 = y0 - j1 + G2;
-    var x2 = x0 - 1 + 2 * G2; // Offsets for last corner in (x,y) unskewed coords
-    var y2 = y0 - 1 + 2 * G2;
-    // Work out the hashed gradient indices of the three simplex corners
-    i &= 255;
-    j &= 255;
-    var gi0 = gradP[i+perm[j]];
-    var gi1 = gradP[i+i1+perm[j+j1]];
-    var gi2 = gradP[i+1+perm[j+1]];
-    // Calculate the contribution from the three corners
-    var t0 = 0.5 - x0*x0-y0*y0;
-    if(t0<0) {
-      n0 = 0;
-    } else {
-      t0 *= t0;
-      n0 = t0 * t0 * gi0.dot2(x0, y0);  // (x,y) of grad3 used for 2D gradient
-    }
-    var t1 = 0.5 - x1*x1-y1*y1;
-    if(t1<0) {
-      n1 = 0;
-    } else {
-      t1 *= t1;
-      n1 = t1 * t1 * gi1.dot2(x1, y1);
-    }
-    var t2 = 0.5 - x2*x2-y2*y2;
-    if(t2<0) {
-      n2 = 0;
-    } else {
-      t2 *= t2;
-      n2 = t2 * t2 * gi2.dot2(x2, y2);
-    }
-    // Add contributions from each corner to get the final noise value.
-    // The result is scaled to return values in the interval [-1,1].
-    return 70 * (n0 + n1 + n2);
-  };
-
-  // 3D simplex noise
-  module.simplex3 = function(xin, yin, zin) {
-    var n0, n1, n2, n3; // Noise contributions from the four corners
-
-    // Skew the input space to determine which simplex cell we're in
-    var s = (xin+yin+zin)*F3; // Hairy factor for 2D
-    var i = Math.floor(xin+s);
-    var j = Math.floor(yin+s);
-    var k = Math.floor(zin+s);
-
-    var t = (i+j+k)*G3;
-    var x0 = xin-i+t; // The x,y distances from the cell origin, unskewed.
-    var y0 = yin-j+t;
-    var z0 = zin-k+t;
-
-    // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
-    // Determine which simplex we are in.
-    var i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
-    var i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
-    if(x0 >= y0) {
-      if(y0 >= z0)      { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; }
-      else if(x0 >= z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; }
-      else              { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; }
-    } else {
-      if(y0 < z0)      { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; }
-      else if(x0 < z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; }
-      else             { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; }
-    }
-    // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
-    // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
-    // a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
-    // c = 1/6.
-    var x1 = x0 - i1 + G3; // Offsets for second corner
-    var y1 = y0 - j1 + G3;
-    var z1 = z0 - k1 + G3;
-
-    var x2 = x0 - i2 + 2 * G3; // Offsets for third corner
-    var y2 = y0 - j2 + 2 * G3;
-    var z2 = z0 - k2 + 2 * G3;
-
-    var x3 = x0 - 1 + 3 * G3; // Offsets for fourth corner
-    var y3 = y0 - 1 + 3 * G3;
-    var z3 = z0 - 1 + 3 * G3;
-
-    // Work out the hashed gradient indices of the four simplex corners
-    i &= 255;
-    j &= 255;
-    k &= 255;
-    var gi0 = gradP[i+   perm[j+   perm[k   ]]];
-    var gi1 = gradP[i+i1+perm[j+j1+perm[k+k1]]];
-    var gi2 = gradP[i+i2+perm[j+j2+perm[k+k2]]];
-    var gi3 = gradP[i+ 1+perm[j+ 1+perm[k+ 1]]];
-
-    // Calculate the contribution from the four corners
-    var t0 = 0.6 - x0*x0 - y0*y0 - z0*z0;
-    if(t0<0) {
-      n0 = 0;
-    } else {
-      t0 *= t0;
-      n0 = t0 * t0 * gi0.dot3(x0, y0, z0);  // (x,y) of grad3 used for 2D gradient
-    }
-    var t1 = 0.6 - x1*x1 - y1*y1 - z1*z1;
-    if(t1<0) {
-      n1 = 0;
-    } else {
-      t1 *= t1;
-      n1 = t1 * t1 * gi1.dot3(x1, y1, z1);
-    }
-    var t2 = 0.6 - x2*x2 - y2*y2 - z2*z2;
-    if(t2<0) {
-      n2 = 0;
-    } else {
-      t2 *= t2;
-      n2 = t2 * t2 * gi2.dot3(x2, y2, z2);
-    }
-    var t3 = 0.6 - x3*x3 - y3*y3 - z3*z3;
-    if(t3<0) {
-      n3 = 0;
-    } else {
-      t3 *= t3;
-      n3 = t3 * t3 * gi3.dot3(x3, y3, z3);
-    }
-    // Add contributions from each corner to get the final noise value.
-    // The result is scaled to return values in the interval [-1,1].
-    return 32 * (n0 + n1 + n2 + n3);
-
-  };
-
-  // ##### Perlin noise stuff
-
-  function fade(t) {
-    return t*t*t*(t*(t*6-15)+10);
-  }
-
-  function lerp(a, b, t) {
-    return (1-t)*a + t*b;
-  }
-
-  // 2D Perlin Noise
-  module.perlin2 = function(x, y) {
-    // Find unit grid cell containing point
-    var X = Math.floor(x), Y = Math.floor(y);
-    // Get relative xy coordinates of point within that cell
-    x = x - X; y = y - Y;
-    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
-    X = X & 255; Y = Y & 255;
-
-    // Calculate noise contributions from each of the four corners
-    var n00 = gradP[X+perm[Y]].dot2(x, y);
-    var n01 = gradP[X+perm[Y+1]].dot2(x, y-1);
-    var n10 = gradP[X+1+perm[Y]].dot2(x-1, y);
-    var n11 = gradP[X+1+perm[Y+1]].dot2(x-1, y-1);
-
-    // Compute the fade curve value for x
-    var u = fade(x);
-
-    // Interpolate the four results
-    return lerp(
-        lerp(n00, n10, u),
-        lerp(n01, n11, u),
-       fade(y));
-  };
-
-  // 3D Perlin Noise
-  module.perlin3 = function(x, y, z) {
-    // Find unit grid cell containing point
-    var X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z);
-    // Get relative xyz coordinates of point within that cell
-    x = x - X; y = y - Y; z = z - Z;
-    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
-    X = X & 255; Y = Y & 255; Z = Z & 255;
-
-    // Calculate noise contributions from each of the eight corners
-    var n000 = gradP[X+  perm[Y+  perm[Z  ]]].dot3(x,   y,     z);
-    var n001 = gradP[X+  perm[Y+  perm[Z+1]]].dot3(x,   y,   z-1);
-    var n010 = gradP[X+  perm[Y+1+perm[Z  ]]].dot3(x,   y-1,   z);
-    var n011 = gradP[X+  perm[Y+1+perm[Z+1]]].dot3(x,   y-1, z-1);
-    var n100 = gradP[X+1+perm[Y+  perm[Z  ]]].dot3(x-1,   y,   z);
-    var n101 = gradP[X+1+perm[Y+  perm[Z+1]]].dot3(x-1,   y, z-1);
-    var n110 = gradP[X+1+perm[Y+1+perm[Z  ]]].dot3(x-1, y-1,   z);
-    var n111 = gradP[X+1+perm[Y+1+perm[Z+1]]].dot3(x-1, y-1, z-1);
-
-    // Compute the fade curve value for x, y, z
-    var u = fade(x);
-    var v = fade(y);
-    var w = fade(z);
-
-    // Interpolate
-    return lerp(
-        lerp(
-          lerp(n000, n100, u),
-          lerp(n001, n101, u), w),
-        lerp(
-          lerp(n010, n110, u),
-          lerp(n011, n111, u), w),
-       v);
-  };
-
-})(this);
 </script>
 <script>"use strict";
 
@@ -2012,288 +920,212 @@ function initObject(options = {}) {
 
     return obj
 }</script>
-<script>var a_coords_loc       // Location of the a_coords attribute variable in the shader program.
-var a_coords_buffer    // Buffer to hold the values for a_coords.
-var a_size_loc = -1
-var a_size_buffer
-var a_color_loc = -1
-var a_color_buffer
+<script>var a_coords_loc;       // Location of the a_coords attribute variable in the shader program.
+var a_coords_buffer;    // Buffer to hold the values for a_coords.
+var a_size_loc;
+var a_size_buffer;
+var a_color_loc;
+var a_color_buffer;
 
-var u_diffuseColor     // Locations of uniform variables in the shader program
-var u_specularColor
-var u_specularExponent
-var u_lightPosition
-var u_modelview
-var u_projection
-var u_normalMatrix   
+var u_modelview;
+var u_projection;
 
-var projection = mat4.create()    // projection matrix
-var modelview                    // modelview matrix; value comes from rotator
-var normalMatrix = mat3.create();  // matrix, derived from modelview matrix, for transforming normal vectors
-var rotator  // A TrackballRotator to implement rotation by mouse.
-var zoomer
-var colors = [  // RGB color arrays for diffuse and specular color values, selected by popup menu
-    [1,1,1], [1,0,0], [0,1,0], [0,0,1], [0,1,1], [1,0,1], [1,1,0], [0,0,0], [0.5,0.5,0.5]
-];
-var lightPositions = [  // values for light position, selected by popup menu
-    [0,0,0,1], [0,0,1,0], [0,1,0,0], [0,0,-10,1], [2,3,5,0]
-];
-var objects = [  // Objects for display, selected by popup menu
-    cube(5),
-    uvTorus(3,1,64,32),
-    uvCylinder(1.5,5.5),
-    uvCone(2.5,5.5),
-    uvSphere(3),
-    uvSphere(3,12,6)
-];
-var currentModelNumber;  // contains data for the current object
+var projection = mat4.create();    // projection matrix
+var modelview;                     // modelview matrix; value comes from rotator
+var rotator;  // A TrackballRotator to implement rotation by mouse.
 
 var points = []
 var coords = new Float32Array()
 var colors = new Float32Array()
-var normals = new Float32Array()
-var sizes = new Float32Array()
+var size = new Float32Array()
 
-var scale = 1
+var nextQueue = [{prev:null, point:vec2.fromValues(0,0)}]
+var visited = {}
+var chance = 1
+var len = 0
+var totalLimit = 1000000
+
 var dt = 1000/60
-var time = 0
+var rate = 2000
+
+
+//var scale = 0.075
+var scale = 0.015
+var maxDist = 400
+var spinTime = 100
+var spinCount = 0.5 
+var resetTime = 6000
 var resetTimeout
 
-var loopTimeout
+var updateList = []
 
-var fieldSize = 100000
+var time = 0
 
-var clearVal = 0
+var colorCounter = 0
+// change every x points
+var colorChange = 10000
+var prevColor
+var color
+function newColor() {
+	prevColor = color
+	color = vec3.fromValues(
+		Math.pow(Math.random(), Math.random()), 
+		Math.pow(Math.random(), Math.random()), 
+		Math.pow(Math.random(), Math.random()))
+}
+newColor()
+newColor()
 
-var seeds 
-var freqMin = 0.1 
-var freqMax = 4
-var sizeMin = 0.1
-var sizeMax = 2
-var frequencies = []
+function genTriangles(limit = -1) {
+	i = 0
+	while(nextQueue.length > 0) {
+		i += 1
+		if(i > limit || len >= totalLimit)
+			break
 
-var sampleColors = [
-    0.349, 0.453, 0.651,
-    0.761, 0.592, 0.353,
-    0.235, 0.159, 0.159,
-    0.110, 0.110, 0.141,
-    0.816, 0.816, 0.899,
-    0.827, 0.69, 0.384, 
-    0.592, 0.701, 0.773]
+		var obj = nextQueue.shift()
+		if(obj == null)
+		{
+			console.log("STACK OBJECT EMPTY!!!!")
+			continue
+		}
+		var prev = obj.prev
+		var point = obj.point
+		var x = point[0]
+		var y = point[1]
+		var visitString = x + "," + y
 
-//'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']
+		// Don't loop
+		if(visitString in visited)
+			continue
 
-function installModel(modelData) {
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_coords_loc);
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_normal_loc);
-     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
-     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
+		// Add tris
+		colorCounter += 1
+		if(colorCounter > colorChange)
+		{
+			newColor()
+			colorCounter = 0
+		}
+
+		var f = colorCounter/colorChange
+		var calcColor = vec3.fromValues(
+			lerp(prevColor[0], color[0], f),
+			lerp(prevColor[1], color[1], f),
+			lerp(prevColor[2], color[2], f))
+
+		// Tree maintenance
+		var node = {
+			next:[],
+			point:point,
+			life:spinTime+dt*(i/limit),
+			i:len,
+			color:calcColor
+		}
+		if(prev)
+			prev.next.push(visitString)
+
+		visited[x + "," + y] = node
+		updateList.push(node)
+
+		len += 1
+
+		// Direction we travel depends on whether we're flipped up or down, this is determined by the grid offset
+		// yes = (0,0) (2,0), (1,1)
+		// no = (1,0) (3,0)
+		var dir = (Math.abs(point[0])+Math.abs(point[1]))%2
+
+		var next
+		if(dir == 0)
+			next = [0, 2, 3]
+		else
+			next = [0, 1, 2]
+
+		shuffle(next)
+		next.pop()
+
+		for(let j = 0; j < next.length; j++)
+		{
+			//if(Math.random() < Math.pow(chance*Math.max(0,(limit-i)/limit), 0.5))
+			var c = 0.5
+			if(Math.random() < lerp(0.5, 0.96, Math.pow(Math.max(0, (totalLimit-len)/totalLimit), c))) {
+				switch (next[j]) {
+					case 0:
+						nextQueue.push({prev:node, point: vec3.fromValues(x+1, y,0)})
+						break
+					case 1:
+						nextQueue.push({prev:node, point:vec3.fromValues(x, y+1,0)})
+						break
+					case 2:
+						nextQueue.push({prev:node, point:vec3.fromValues(x-1, y,0)})
+						break
+					case 3:
+						nextQueue.push({prev:node, point:vec3.fromValues(x, y-1,0)})
+						break
+				}
+			}
+		}
+	}
+}
+
+function drawTriangles() {
+
+	traverseStack = []
+	// Traverse
+	traverseStack.push(visited["0,0"])
+
+	var offsetX = 1
+	var offsetY = 1 
+	for(let i = 0; i < updateList.length; i++) {
+		var node = updateList[i]
+		var position = node.point
+		// var position = vec3.fromValues(node.point[0]*offsetX, node.pointpoint[1]*offsetY, 0) 
+		if(node.life > 0) {
+			node.life = Math.max(node.life - dt, 0)
+		} else {
+			updateList.splice(i, 1)
+			i--
+		}
+
+		var f = Math.pow((spinTime-Math.min(node.life,spinTime))/spinTime, 2);
+		size[node.i] = scale*84;
+
+		var of = node.i*3
+		coords[of + 0] = position[0]
+		coords[of + 1] = position[1]
+		coords[of + 2] = position[2]
+
+		colors[of + 0] = lerp(0.2, node.color[0], f)
+		colors[of + 1] = lerp(0.2, node.color[1], f)
+		colors[of + 2] = lerp(0.2, node.color[2], f)
+	}	
 }
 
 function loop() {
     draw()
 
-    if(loopTimeout != null)
-        clearTimeout(loopTimeout)
+	genTriangles(rate)
 
-    loopTimeout = setTimeout(loop, dt)
+    setTimeout(loop, dt)
 
     time += dt
 }
 
-function reset() {
-    console.log("RESET")
-    // if(resetTimeout)
-        // clearTimeout(resetTimeout)
-    // resetTimeout = setTimeout(reset, 1000)
-    frequencies = [
-        lerp(freqMin, freqMax, Math.random()),
-        lerp(freqMin, freqMax, Math.random()),
-        lerp(freqMin, freqMax, Math.random()),
-        4]
-
-    seeds = [Math.random(), Math.random(), Math.random(), Math.random()]
-
-    generateField()
-
-
-    draw()
-}
-
-function getNoise(x, y, i) {
-    noise.seed(seeds[i])
-    return 0.5 + noise.simplex2(x*frequencies[i], y*frequencies[i])/2;
-}
-
-function generateField() {
-    var width = 1;
-    var height = 1;
-    points = []
-    for(let i = 0; i < fieldSize; i++) {
-        // Add random point to canvas
-        var randX =  Math.random()
-        var randY =  Math.random()
-        var randZ = 0
-
-        var vec = vec3.fromValues(randX, randY, randZ)
-        points.push(vec)
-    }
-
-    // Create points
-    coords = new Float32Array(fieldSize*3)
-    colors = new Float32Array(fieldSize*3)
-    sizes = new Float32Array(fieldSize)
-
-    // Update coords from points
-    var s = 0
-    var c = 0
-    var c2 = 0
-    var c3 = 0
-
-    var r = 0 
-    var g = 0
-    var b = 0
-
-    var r2 = 0
-    var g2 = 0
-    var b2 = 0
-
-    var p = 10
-    var p2 = 1 
-    var p3 = 3
-    var p4 = 1
-    var p5 = 5
-
-    var f = 0.1
-    var f2 = 1.5
-    var f3 = 0
-
-    var freq = 10
-    var min = 1
-    var max = 0
-    for(let i = 0; i < fieldSize; i++) {
-        s = lerp(sizeMin, sizeMax, Math.random())
-        // c = Math.pow(lerp(Math.random(), getNoise(points[i][0], points[i][1], 3), Math.random()), p)
-        c = Math.pow(Math.random(), p)*f
-        c2 = Math.pow(getNoise(points[i][0], points[i][1], 3), p2)*f
-        /*if(c2 < min)
-            min = c2
-        if(c2 > max)
-            max = c2*/
-        r = g = b = lerp(c, c2, Math.pow(Math.random(), p3))
-
-
-        //r2 = Math.pow(getNoise(points[i][0], points[i][1], 0), p3)
-        //g2 = Math.pow(getNoise(points[i][0], points[i][1], 1), p3)
-        //b2 = Math.pow(getNoise(points[i][0], points[i][1], 2), p3)
-
-
-
-        if(Math.pow(Math.random(), p5) > 0.8)
-        {
-            var variety = 0
-            var test = Math.random()
-            if(test > 0.8)
-                variety = 2
-            else if(test > 0.6)
-                variety = 1
-
-            var noise = Math.pow(getNoise(points[i][0], points[i][1], variety), p4);
-            switch(variety) {
-                case 0:
-                    r2 = 0.349*noise
-                    g2 = 0.453*noise
-                    b2 = 0.651*noise
-                break;
-                case 1:
-                    r2 = 0.761*noise
-                    g2 = 0.592*noise
-                    b2 = 0.353*noise
-                break;
-                case 2:
-                    r2 = 0.592*noise
-                    g2 = 0.701*noise
-                    b2 = 0.773*noise 
-                break
-            }
-
-            f3 = 1
-        }
-        else 
-            f3 = 0
-
-        //0.349, 0.453, 0.651       
-        //0.761, 0.592, 0.353
-        //0.592, 0.701, 0.773
-
-        // Random
-        if(Math.pow(Math.random(), 6) > 0.98) {
-            var index = Math.floor(Math.random()*(sampleColors.length/3))
-            r = Math.max(sampleColors[index*3+0], 0)*f2
-            g = Math.max(sampleColors[index*3+1], 0)*f2
-            b = Math.max(sampleColors[index*3+2], 0)*f2
-            s += 0.3
-            /*r = sma
-            g = Math.random()
-            b = Math.random()*/
-        }
-
-        coords[i*3 + 0] = -1 + 2*points[i][0]
-        coords[i*3 + 1] = -1 + 2*points[i][1]
-        coords[i*3 + 2] = -1 + 2*points[i][2]
-
-
-        colors[i*3 + 0] = Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1)
-        colors[i*3 + 1] = Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1)
-        colors[i*3 + 2] = Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1)
-
-        sizes[i] = s
-    }
-
-    //console.log("Min: " + min + " Max: " + max)
-}
-
 function draw() { 
     // Multi Triangle
-    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
+    gl.clearColor(0.2,0.2,0.2,1);  // specify the color to be used for clearing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    mat4.perspective(projection, Math.PI/5, 1, 0.5, 20);
-    // mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
-
-    var zoom = zoomer.getZoomScale()
-    rotator.setViewDistance(lerp(0.01, 2, 1-zoom))
-
+    mat4.perspective(projection,Math.PI/5,1,10,20);
     modelview = rotator.getViewMatrix();
+
     mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
 
     // Uniforms
     gl.uniformMatrix4fv(u_modelview, false, modelview );
     gl.uniformMatrix4fv(u_projection, false, projection ); 
 
-    // drawModel()
-    drawPoints();
-}
-
-function drawModel() {
-    mat3.normalFromMat4(normalMatrix, modelview);
-    
-    gl.uniformMatrix3fv(u_normalMatrix, false, normalMatrix);
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection );
-    
-    /* Draw the model.  The data for the model was set up in installModel() */
-   
-    gl.drawElements(gl.TRIANGLES, objects[currentModelNumber].indices.length, gl.UNSIGNED_SHORT, 0); 
-}
-
-function drawTris() {
+    // Main coordinates
+    drawTriangles()
 
     // Set up values for the "coords" attribute 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
@@ -2302,206 +1134,79 @@ function drawTris() {
     gl.enableVertexAttribArray(a_coords_loc); 
    
     // Set up values for the "color" attribute 
-    if(a_color_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
+    gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_color_loc); 
 
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, size, gl.STREAM_DRAW);
+    gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_size_loc); 
 
     // Draw the triangles. 
-    gl.drawArrays(gl.TRIANGLES, 0, points.length*3);
-}
-
-function drawPoints() {
-
-    // Set up values for the "coords" attribute 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STREAM_DRAW);
-    gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_coords_loc); 
-   
-    // Set up values for the "color" attribute
-    if(a_color_loc != -1) { 
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
-
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
-
-    // Draw the triangles. 
-    gl.drawArrays(gl.POINTS, 0, points.length); 
-}
-
-
-function initBasic(canvas) {
-    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-    u_shift = gl.getUniformLocation(prog, "shift")
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-function initPhong(canvas) {
-    var prog = createProgram(gl,"phong-vshader-source","phong-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
-    a_normal_buffer = gl.createBuffer();
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");
-    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
-    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
-    u_diffuseColor =  gl.getUniformLocation(prog, "diffuseColor");
-    u_specularColor =  gl.getUniformLocation(prog, "specularColor");
-    u_specularExponent = gl.getUniformLocation(prog, "specularExponent");
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.uniform3f(u_specularColor, 0.5, 0.5, 0.5);
-    gl.uniform4f(u_diffuseColor, 1, 1, 1, 1);
-    gl.uniform1f(u_specularExponent, 10);
-    gl.uniform4f(u_lightPosition, 0, 0, 0, 1);	
-
-    installModel(objects[1]);
-    currentModelNumber = 1; 
-}
-
-function initPoint(canvas) {
-    var prog = createProgram(gl,"point-vshader-source","point-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    console.log("Coords: " + a_coords_loc)
-    console.log("Colors: " + a_color_loc)
-    console.log("Size: " + a_size_loc)
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-
-    gl.enable(gl.DEPTH_TEST);
+    gl.drawArrays(gl.POINTS, 0, len); 
 }
 
 /* Initialize the WebGL context.  Called from init() */
 function init() {
-    console.log("Init")
-    glInit(() => {
-        console.log(canvas)
-        initPoint(canvas)
-        // initBasic(canvas)
+	console.log("Init")
+	glInit(() => {
+	    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
+	    gl.useProgram(prog);
+	    gl.enable(gl.DEPTH_TEST);
 
-        rotator = new TrackballRotator(canvas, draw, 15)
-        zoomer = new Zoomer(canvas, 0)
+	    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
+	    a_coords_buffer = gl.createBuffer();
+	    a_color_loc =  gl.getAttribLocation(prog, "a_color");
+	    a_color_buffer = gl.createBuffer();
+	    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
+	    a_size_buffer = gl.createBuffer(); 
+	    console.log("SIZE" + a_size_loc)
+	    console.log("CORD" + a_coords_loc)
+	    console.log("COLOR" + a_color_loc)
 
-        /*document.getElementById("freqMin").value = freqMin;
-        document.getElementById("freqMax").value = freqMax;
-        console.log("Field size " + fieldSize)
-        document.getElementById("fieldSize").value = fieldSize;
-        document.getElementById("freqMin").onchange = function() { freqMin = Number(this.value); reset(); };
-        document.getElementById("freqMax").onchange = function() { freqMax = Number(this.value); reset(); };
-        document.getElementById("fieldSize").onchange = function() { fieldSize = Number(this.value); reset(); }; */
+	    index_buffer = gl.createBuffer();
 
-        reset()
-        loop()
-    })
+	    u_modelview = gl.getUniformLocation(prog, "modelview");
+	    u_projection = gl.getUniformLocation(prog, "projection");    
+	    u_shift = gl.getUniformLocation(prog, "shift")
 
-    document.body.onkeyup = function(e){
-        if(e.keyCode == 32){
-            reset()
-        }
-    }   
-}</script>
+    	rotator = new TrackballRotator(canvas, draw, 15);
 
-<style>
-	body {
-		background-color:black;
-	}
-	.slidecontainer {
-	  width: 100%; /* Width of the outside container */
-	}
+		coords = new Float32Array(totalLimit*3)
+		colors = new Float32Array(totalLimit*3)
+		size = new Float32Array(totalLimit)
 
-	/* The slider itself */
-	.slider {
-	  -webkit-appearance: none;  /* Override default CSS styles */
-	  appearance: none;
-	  width: 50%; /* Full-width */
-	  height: 15px; /* Specified height */
-	  background: #d3d3d3; /* Grey background */
-	  outline: none; /* Remove outline */
-	  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
-	  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
-	  transition: opacity .2s;
-	}
+		reset()
+	    loop()
+	})
 
-	/* Mouse-over effects */
-	.slider:hover {
-	  opacity: 1; 
-	}
-</style>
+	document.body.onkeyup = function(e){
+	    if(e.keyCode == 32){
+	    	reset()
+	    }
+	}	
+}
+
+function reset() {
+    len = 0
+    time = 0
+	nextQueue = [{prev:null, point:vec3.fromValues(0,0,0)}]
+	visited = {}
+	loopTimout = null
+
+	if(resetTimeout)
+		clearTimeout(resetTimeout)
+	resetTimeout = setTimeout(reset, resetTime)
+}
+</script>
 </head>
 
 <body onload="init()">
 
-<div style="display:flex">
-	<div id="canvas-holder">
-	   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
-		<!--<div class="slidecontainer">
-			Field Size 
-			<input type="range" min="10" max="1000000" value="10" class="slider" id="fieldSize">
-		</div>
-
-		<div class="slidecontainer">
-			Freq Min
-			<input type="range" min="0.1" max="10" value="0.1" class="slider" id="freqMin">
-		</div>	
-		<div class="slidecontainer">
-			Freq Max
-			<input type="range" min="1" max="10" value="1" class="slider" id="freqMax">
-		</div>-->
-	</div>
-	<div>
-		<img src="space.jpg" style="width:800px;height:800px"></img>
-	</div>
-</div>
-<div>
+<div id="canvas-holder">
+   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
 </div>
 
 </body>
