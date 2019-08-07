@@ -1,0 +1,75 @@
+
+<script type="x-shader/x-vertex" id="sizzle-vshader-source">
+        attribute vec3 a_coords;
+        attribute vec3 a_normal;
+        uniform mat4 modelview;
+        uniform mat4 projection;
+        uniform mat3 normalMatrix;
+        uniform vec4 lightPosition;
+        uniform float time;
+        varying vec3 v_normal;
+        varying vec3 v_eyeCoords;
+        varying vec4 v_lightPosition;
+        void main() {
+                vec4 coords = vec4(a_coords,1.0);
+                vec4 eyeCoords = modelview * coords;
+                v_normal = normalize(a_normal);
+                v_eyeCoords = eyeCoords.xyz/eyeCoords.w; 
+                v_lightPosition = modelview * lightPosition;
+
+                // Calculate the reflection dot here as well to add sizzle
+                vec3 N, L ;  // vectors for lighting equation
+                N = normalize( normalMatrix*v_normal );
+                if ( v_lightPosition.w == 0.0 ) {
+                        L = normalize( v_lightPosition.xyz );
+                }
+                else {
+                        L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+                }
+                float offset = 0.0;
+                float dotLN = dot(L,N);
+                if ( dotLN > 0.0) {
+                        offset = pow(dotLN,2.0) * 0.2*sin(time/100.0 + (coords.x + coords.y + coords.z)*1000.0);
+                } 
+
+                gl_Position = projection * eyeCoords + vec4(a_normal*offset, 1.0);
+        }
+</script>
+
+<script type="x-shader/x-fragment" id="sizzle-fshader-source">
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+             precision highp float;
+        #else
+             precision mediump float;
+        #endif
+        uniform mat3 normalMatrix;
+        uniform vec4 diffuseColor;
+        uniform vec3 specularColor;
+        uniform float specularExponent;
+        varying vec3 v_normal;
+        varying vec3 v_eyeCoords;
+        varying vec4 v_lightPosition;
+        void main() {
+            float ambient = 0.2;
+            vec3 N, L, R, V;  // vectors for lighting equation
+            N = normalize( normalMatrix*v_normal );
+            if ( v_lightPosition.w == 0.0 ) {
+                L = normalize( v_lightPosition.xyz );
+            }
+            else {
+                L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+            }
+            R = -reflect(L,N);
+            V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+            if ( dot(L,N) <= 0.0) {
+                gl_FragColor = vec4(diffuseColor.rgb*ambient, 1);
+            }
+            else {
+                vec3 color = (ambient + (0.8-ambient)*dot(L,N)) * diffuseColor.rgb;
+                if (dot(R,V) > 0.0) {
+                    color += 0.4*pow(dot(R,V)*dot(L,N),specularExponent) * specularColor;
+                }
+                gl_FragColor = vec4(color, diffuseColor.a);
+            }
+        }
+</script>

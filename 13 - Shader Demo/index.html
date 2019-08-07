@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<html>
+<head>
+<title>TestGL</title>
+<style>
+        body {
+                background-color: #EEEEEE;
+        }
+        label {
+                white-space: pre;
+        }
+        body {
+            background-color:black;
+        }
+        .slidecontainer {
+            width: 100%; /* Width of the outside container */
+        }
+
+        /* The slider itself */
+        .slider {
+            -webkit-appearance: none;  /* Override default CSS styles */
+            appearance: none;
+            width: 50%; /* Full-width */
+            height: 15px; /* Specified height */
+            background: #d3d3d3; /* Grey background */
+            outline: none; /* Remove outline */
+            opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+            -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+            transition: opacity .2s;
+        }
+
+        /* Mouse-over effects */
+        .slider:hover {
+            opacity: 1; 
+        }
+</style>
+
+<script type="x-shader/x-vertex" id="sizzle-vshader-source">
+        attribute vec3 a_coords;
+        attribute vec3 a_normal;
+        uniform mat4 modelview;
+        uniform mat4 projection;
+        uniform mat3 normalMatrix;
+        uniform vec4 lightPosition;
+        uniform float time;
+        varying vec3 v_normal;
+        varying vec3 v_eyeCoords;
+        varying vec4 v_lightPosition;
+        void main() {
+                vec4 coords = vec4(a_coords,1.0);
+                vec4 eyeCoords = modelview * coords;
+                v_normal = normalize(a_normal);
+                v_eyeCoords = eyeCoords.xyz/eyeCoords.w; 
+                v_lightPosition = modelview * lightPosition;
+
+                // Calculate the reflection dot here as well to add sizzle
+                vec3 N, L ;  // vectors for lighting equation
+                N = normalize( normalMatrix*v_normal );
+                if ( v_lightPosition.w == 0.0 ) {
+                        L = normalize( v_lightPosition.xyz );
+                }
+                else {
+                        L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+                }
+                float offset = 0.0;
+                float dotLN = dot(L,N);
+                if ( dotLN > 0.0) {
+                        offset = pow(dotLN,2.0) * 0.2*sin(time/100.0 + (coords.x + coords.y + coords.z)*1000.0);
+                } 
+
+                gl_Position = projection * eyeCoords + vec4(a_normal*offset, 1.0);
+        }
+</script>
+
+<script type="x-shader/x-fragment" id="sizzle-fshader-source">
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+             precision highp float;
+        #else
+             precision mediump float;
+        #endif
+        uniform mat3 normalMatrix;
+        uniform vec4 diffuseColor;
+        uniform vec3 specularColor;
+        uniform float specularExponent;
+        varying vec3 v_normal;
+        varying vec3 v_eyeCoords;
+        varying vec4 v_lightPosition;
+        void main() {
+            float ambient = 0.2;
+            vec3 N, L, R, V;  // vectors for lighting equation
+            N = normalize( normalMatrix*v_normal );
+            if ( v_lightPosition.w == 0.0 ) {
+                L = normalize( v_lightPosition.xyz );
+            }
+            else {
+                L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+            }
+            R = -reflect(L,N);
+            V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+            if ( dot(L,N) <= 0.0) {
+                gl_FragColor = vec4(diffuseColor.rgb*ambient, 1);
+            }
+            else {
+                vec3 color = (ambient + (0.8-ambient)*dot(L,N)) * diffuseColor.rgb;
+                if (dot(R,V) > 0.0) {
+                    color += 0.4*pow(dot(R,V)*dot(L,N),specularExponent) * specularColor;
+                }
+                gl_FragColor = vec4(color, diffuseColor.a);
+            }
+        }
+</script>
+<script type="x-shader/x-vertex" id="phongTexture-vshader-source">
+     attribute vec3 a_coords;
+        attribute vec2 a_texcoord;
+        attribute vec3 a_normal;
+
+        uniform mat4 modelview;
+        uniform mat4 projection; 
+        uniform vec4 lightPosition;
+        varying vec3 v_normal;
+        varying vec3 v_eyeCoords; 
+        varying vec2 v_texcoord;
+        varying vec4 v_lightPosition;
+
+        void main() {
+            vec4 coords = vec4(a_coords, 1.0);
+            vec4 eyeCoords = modelview * coords;
+            gl_Position = projection * eyeCoords;
+
+            v_normal = a_normal;
+            v_texcoord = a_texcoord;
+            v_lightPosition = modelview * lightPosition;
+            v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird) 
+        } 
+</script>
+
+<script type="x-shader/x-fragment" id="phongTexture-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+    #else
+        precision mediump float;
+    #endif
+    uniform mat3 normalMatrix; 
+    uniform sampler2D u_texture;
+    uniform vec3 specularColor;
+    uniform float specularExponent; 
+    uniform float ambientLighting;
+    varying vec2 v_texcoord;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    varying vec4 v_lightPosition;
+
+    void main() {
+        vec3 N, L, R, V;  // vectors for lighting equation
+        N = normalize( normalMatrix*v_normal );
+        if ( lightPosition.w == 0.0 ) {
+            L = normalize( v_lightPosition.xyz );
+        } else {
+            L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+        }
+        R = -reflect(L,N);
+        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+        float dotLN = dot(L,N);
+        vec3 color;
+        if ( dotLN <= 0.0 ) {
+            vec4 sample = texture2D(u_texture, v_texcoord);
+            color = ambientLighting*sample;
+        } else {
+
+            vec4 sample = texture2D(u_texture, v_texcoord);
+            color = (ambientLighting + (0.8-ambientLighting)*dot(L,N)) * sample.rgb;
+
+            float dotRV = dot(R,V);
+            if (dotRV > 0.0) {
+                color += 0.4*pow(dotRV,specularExponent) * specularColor;
+            } 
+        } 
+        gl_FragColor = vec4(color,diffuse.a);
+    }    
+</script>
+<script type="x-shader/x-vertex" id="phongColor-vshader-source">
+    attribute vec3 a_coords;
+    attribute vec3 a_normal;
+    uniform mat4 modelview;
+    uniform mat4 projection;
+    uniform vec4 lightPosition;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    varying vec4 v_lightPosition;
+
+    void main() {
+        vec4 coords = vec4(a_coords,1.0);
+        vec4 eyeCoords = modelview * coords;
+        gl_Position = projection * eyeCoords;
+        v_normal = normalize(a_normal);
+        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; 
+        v_lightPosition = modelview * lightPosition;
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="phongColor-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+         precision highp float;
+    #else
+         precision mediump float;
+    #endif
+    uniform mat3 normalMatrix;
+    uniform vec4 diffuseColor;
+    uniform vec3 specularColor;
+    uniform float specularExponent;
+    uniform float ambientLighting;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    varying vec4 v_lightPosition;
+    void main() {
+        vec3 N, L, R, V;  // vectors for lighting equation
+        N = normalize( normalMatrix*v_normal );
+        if ( v_lightPosition.w == 0.0 ) {
+            L = normalize( v_lightPosition.xyz );
+        }
+        else {
+            L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
+        }
+        R = -reflect(L,N);
+        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+        vec3 color;
+        float dotLN = dot(L,N);
+        if ( dotLN <= 0.0) {
+            color = vec3(ambientLighting*diffuseColor.rgb);
+        }
+        else {
+            color = (ambientLighting + (0.8-ambientLighting)*dotLN) * diffuseColor.rgb;
+
+            float dotRV = dot(R,V);
+            if (dotRV > 0.0) {
+                color += 0.4*pow(dotRV*dotLN,specularExponent) * specularColor;
+            }
+        }
+
+
+        gl_FragColor = vec4(color, diffuseColor.a);
+    }
+</script>
+
+<script type="x-shader/x-vertex" id="unlitUniformColor-vshader-source">
+    attribute vec3 a_coords;
+    uniform mat4 modelview;
+    uniform mat4 projection; 
+
+    void main() {
+            vec4 coords = vec4(a_coords, 1.0);
+            vec4 eyeCoords = modelview * coords;
+            gl_Position = projection * eyeCoords;
+    } 
+</script>
+
+<script type="x-shader/x-fragment" id="unlitUniformColor-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+            precision highp float;
+    #else
+            precision mediump float;
+    #endif
+    uniform vec3 color;
+
+    void main() {
+            gl_FragColor = vec4(color, 1.0);
+    }       
+</script>
+
+<script type="x-shader/x-vertex" id="cubemapReflection-vshader-source">
+    uniform mat4 projection;
+    uniform mat4 modelview;
+    attribute vec3 a_coords;
+    attribute vec3 a_normal;
+    varying vec3 v_eyeCoords;
+    varying vec3 v_normal;
+    void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_eyeCoords = eyeCoords.xyz;
+        v_normal = normalize(a_normal);
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="cubemapReflection-fshader-source">
+    precision mediump float;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    uniform samplerCube skybox;
+    uniform mat3 normalMatrix;
+    uniform mat3 inverseViewTransform;
+    void main() {
+        vec3 N = normalize(normalMatrix * v_normal);
+        vec3 V = -v_eyeCoords;
+        vec3 R = -reflect(V,N);
+        vec3 T = inverseViewTransform * R; // Transform by inverse of the view transform that was applied to the skybox
+        gl_FragColor = vec4(0.1, 0.1, 0.1, 0) + textureCube(skybox, T);
+        //gl_FragColor = vec4(0,0,1,1);
+    }
+</script>
+
+<script type="x-shader/x-vertex" id="skybox-vshader-source">
+    uniform mat4 projection;
+    uniform mat4 modelview;
+    attribute vec3 a_coords;
+    varying vec3 v_coords;
+    void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_coords = a_coords;
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="skybox-fshader-source">
+    precision mediump float;
+    varying vec3 v_coords;
+    uniform samplerCube skybox;
+    void main() {
+        gl_FragColor = textureCube(skybox, v_coords);
+    }
+</script>
+
+<script type="x-shader/x-vertex" id="unlitUniformColor-vshader-source">
+    attribute vec3 a_coords;
+    uniform mat4 modelview;
+    uniform mat4 projection; 
+
+    void main() {
+        vec4 coords = vec4(a_coords, 1.0);
+        vec4 eyeCoords = modelview * coords;
+        gl_Position = projection * eyeCoords;
+    } 
+</script>
+
+<script type="x-shader/x-fragment" id="unlitUniformColor-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+    #else
+        precision mediump float;
+    #endif
+    uniform vec3 color;
+
+    void main() {
+        gl_FragColor = vec4(color, 1.0);
+    }       
+</script>
+
+<script type="x-shader/x-vertex" id="unlitTexture-vshader-source">
+    attribute vec3 a_coords;
+    attribute vec2 a_texcoord;
+    uniform mat4 modelview;
+    uniform mat4 projection; 
+    varying vec2 v_texcoord;
+
+    void main() {
+        vec4 coords = vec4(a_coords, 1.0);
+        vec4 eyeCoords = modelview * coords;
+        gl_Position = projection * eyeCoords;
+        v_texcoord = a_texcoord;
+    } 
+
+</script>
+
+<script type="x-shader/x-vertex" id="unlitTexture-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+    #else
+        precision mediump float;
+    #endif
+    uniform sampler2D u_texture;
+    varying vec2 v_texcoord;
+
+    void main() {
+        gl_FragColor = texture2D(u_texture, v_texcoord);
+    }    
+</script>
+
+<script src="../base/gl-matrix-min.js"></script>
+<script src="../base/trackball-rotator.js"></script>
+<script src="../base/zoomer.js"></script>
+<script src="../base/basic-object-models-IFS.js"></script>
+<script src="../base/noise.js"></script>
+<script src="../base/fnc.js"></script>
+<script src="../base/gl-base.js"></script>
+<script src="index.js"></script>
+
+<style>
+</style>
+</head>
+
+<body onload="init()">
+
+<div style="display:flex">
+    <div id="canvas-holder">
+         <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
+    </div>
+</div>
+
+</body>
+</html>
+

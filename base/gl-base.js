@@ -73,7 +73,8 @@ var shaders = {
             "lightPosition":"vec4",
             "diffuseColor":"vec4",
             "specularColor":"vec3",
-            "specularExponent":"float"
+            "specularExponent":"float",
+            "ambientLighting":"float"
         }
     },
     "phongTexture": {
@@ -90,7 +91,8 @@ var shaders = {
             "normalMatrix":"mat3",
             "lightPosition":"vec4",
             "specularColor":"vec3",
-            "specularExponent":"float"
+            "specularExponent":"float",
+            "ambientLighting":"float"
         }  
     },
 
@@ -177,6 +179,37 @@ function glInit(callback) {
     }
 }
 
+/**
+ *  Loads a texture image asynchronously.  The first paramter is the url
+ *  from which the image is to be loaded.  The second parameter is the
+ *  texture object into which the image is to be loaded.  When the image
+ *  has finished loading, the draw() function will be called to draw the
+ *  triangle with the texture.  (Also, if an error occurs during loading,
+ *  an error message is displayed on the page, and draw() is called to
+ *  draw the triangle without the texture.)
+ */
+function loadTexture(url, textureObject, callback) {
+    var img = new Image();  //  A DOM image element to represent the image.
+    img.onload = function() { 
+        // This function will be called after the image loads successfully.
+        // We have to bind the texture object to the TEXTURE_2D target before
+        // loading the image into the texture object. 
+        gl.bindTexture(gl.TEXTURE_2D, textureObject);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+        gl.generateMipmap(gl.TEXTURE_2D);  // Create mipmaps; you must either
+                              // do this or change the minification filter.
+        callback()
+    }
+    img.onerror = function(e,f) { 
+        // This function will be called if an error occurs while loading.
+        document.getElementById("headline").innerHTML =
+                        "<p>Sorry, texture image could not be loaded.</p>";
+        callback()
+    }
+    img.src = url;  // Start loading of the image.
+                    // This must be done after setting onload and onerror.
+}
+
 /* Creates a program for use in the WebGL context gl, and returns the
  * identifier for that program.  If an error occurs while compiling or
  * linking the program, an exception of type String is thrown.  The error
@@ -210,7 +243,7 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
         // console.log(fragmentShaderSource)
     }
     catch (e) {
-        throw "Error: Could not get shader source code from script elements.";
+        throw "Error: Could not get shader source code from script elements. " + vertexShaderID + " " + fragmentShaderID;
     }
     var vsh = gl.createShader( gl.VERTEX_SHADER );
     gl.shaderSource(vsh,vertexShaderSource);
@@ -257,6 +290,7 @@ function initMaterial(shader, options = {}) {
         var prog
 
         mat.loadProgram = () => {
+            // console.log("LoadingProgram " + label)
             if("prog" in shaders[shader] && shaders[shader]["prog"] != null)
                 prog = shaders[shader]["prog"]
             else {

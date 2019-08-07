@@ -520,56 +520,59 @@
 	"buffers":
 	[
 		{
-			"file": "11 - StarOrb2/index.js",
+			"contents": "var projection = mat4.create()  // projection matrix\nvar modelview = mat4.create()   // modelview matrix; value comes from rotator\nvar normalMatrix = mat3.create()    // matrix, derived from modelview matrix, for transforming normal vectors\n\nvar scale = 1\nvar dt = 1000/60\nvar time = 0\n\nvar fieldSize = 100000\nvar seeds \nvar freqMin = 0.1 \nvar freqMax = 4\nvar sizeMin = 0.1\nvar sizeMax = 2\nvar frequencies = []\n\nvar sampleColors = [\n    0.349, 0.453, 0.651,\n    0.761, 0.592, 0.353,\n    0.235, 0.159, 0.159,\n    0.110, 0.110, 0.141,\n    0.816, 0.816, 0.899,\n    0.827, 0.69, 0.384, \n    0.592, 0.701, 0.773]\n\nvar texture\nvar framebuffer\n\nvar field = null\nvar cube = null\n\n//'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']\n/* Initialize the WebGL context.  Called from init() */\nfunction init() {\n    glInit(() => {\n\n        rotator = new TrackballRotator(canvas, draw, 15)\n        zoomer = new Zoomer(canvas) \n\n        reset()\n    })\n\n    document.body.onkeyup = function(e){\n        if(e.keyCode == 32){\n            reset()\n        }\n    }   \n}\n\nfunction loop() {\n    draw()\n\n    // setTimeout(loop, dt)\n\n    time += dt\n}\n\nfunction reset() {\n    frequencies = [\n        lerp(freqMin, freqMax, Math.random()),\n        lerp(freqMin, freqMax, Math.random()),\n        lerp(freqMin, freqMax, Math.random()),\n        4]\n\n    seeds = [Math.random(), Math.random(), Math.random(), Math.random()]\n\n    gl.viewport(0,0, canvas.width, canvas.height)\n    /* Create Objects */\n    field = initObject({\n        shader:\"unlitPoint\",\n        elements:fieldSize,\n        drawMode: gl.POINTS\n    })\n    generateField()\n\n    var color = defaultColors[0]\n    color.push(1)\n    var mat = initMaterial(\"phongTexture\", {\n        \"specularColor\": [1, 0, 0],\n        \"diffuseColor\": color,\n        \"specularExponent\": 1,\n        \"lightPosition\": defaultLights[1]\n    })\n\n    cube = initObject({\n        mat:mat,\n        modelName:\"cube\"\n    })\n\n    /* Start draw field */\n    texture = gl.createTexture()\n    gl.bindTexture(gl.TEXTURE_2D, texture)\n    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, \n    \t0, gl.RGBA, gl.UNSIGNED_BYTE, null)\n\n    gl.viewport(0,0,512, 512)\n\n    framebuffer = gl.createFramebuffer()\n    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)\n    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)\n\n    drawField()\n\n    gl.generateMipmap(gl.TEXTURE_2D);\n\n    gl.bindFramebuffer(gl.FRAMEBUFFER, null)\n\n    // Draw mains stuff\n    gl.viewport(0,0,canvas.width, canvas.height)\n    draw()\n\n    /* End draw field */\n\n    /* Start test texture *\n    var texture = gl.createTexture()\n    gl.bindTexture(gl.TEXTURE_2D, texture)\n    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,255,255]))\n\n    var image = new Image();\n    image.src = './space.jpg'\n    image.crossOrigin = \"anonymous\"; \n    image.addEventListener('load', function() {\n        console.log(\"LOADED!\")\n        console.log(image)\n        // Now that the image has loaded make copy it to the texture.\n        gl.bindTexture(gl.TEXTURE_2D, texture);\n        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);\n        gl.generateMipmap(gl.TEXTURE_2D);\n\n        // Draw cube now\n        initBasicTexture()\n        // installModelWithTexture(objects[0])\n        // currentModelNumber = 0\n\n        draw()\n    });\n    /* End Test Texture */\n\n    //draw()\n}\n\nfunction draw() { \n    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing\n    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);\n\n    // Draw flat field as background\n    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); \n    // modelview = rotator.getViewMatrix()//mat4.create()\n    modelview = mat4.create()\n \n    gl.disable(gl.DEPTH_TEST)\n\n    if(field) {\n        field.dirtyAttributes()\n        field.draw(modelview, projection, null)\n    }\n\n    gl.enable(gl.DEPTH_TEST) \n\n    // Draw perspective object\n    mat4.perspective(projection, Math.PI/5, 1, 10, 20);\n    modelview = rotator.getViewMatrix();\n\n    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))\n    if(zoomer) {\n\t    var zoom = zoomer.getZoomScale()\n\t    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))\n\t}\n    mat3.normalFromMat4(normalMatrix, modelview);\n\n    if(cube)\n        cube.draw(modelview, projection, normalMatrix)\n}\n\nfunction drawField() {\n    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing\n    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); \n\n    // Draw flat field as background\n    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); \n    modelview = mat4.create()\n \n    if(field) {\n        field.dirtyAttributes()\n        field.draw(modelview, projection, null)\n    }\n}\n\nfunction getNoise(x, y, i) {\n    noise.seed(seeds[i])\n    return 0.5 + noise.simplex2(x*frequencies[i], y*frequencies[i])/2;\n}\n\nfunction generateField() {\n    var width = 1;\n    var height = 1;\n    points = []\n    for(let i = 0; i < fieldSize; i++) {\n        // Add random point to canvas\n        var randX =  Math.random()\n        var randY =  Math.random()\n        var randZ = -4\n\n        var vec = vec3.fromValues(randX, randY, randZ)\n        points.push(vec)\n    }\n\n\n    // Update coords from points\n    var s = 0\n    var c = 0\n    var c2 = 0\n    var c3 = 0\n\n    var r = 0 \n    var g = 0\n    var b = 0\n\n    var r2 = 0\n    var g2 = 0\n    var b2 = 0\n\n    var p = 10\n    var p2 = 1 \n    var p3 = 3\n    var p4 = 1\n    var p5 = 5\n\n    var f = 0.1\n    var f2 = 1.5\n    var f3 = 0\n\n    var freq = 10\n    var min = 1\n    var max = 0\n    for(let i = 0; i < fieldSize; i++) {\n        s = lerp(sizeMin, sizeMax, Math.random())\n        // c = Math.pow(lerp(Math.random(), getNoise(points[i][0], points[i][1], 3), Math.random()), p)\n        c = Math.pow(Math.random(), p)*f\n        c2 = Math.pow(getNoise(points[i][0], points[i][1], 3), p2)*f\n        /*if(c2 < min)\n            min = c2\n        if(c2 > max)\n            max = c2*/\n        r = g = b = lerp(c, c2, Math.pow(Math.random(), p3))\n\n\n        //r2 = Math.pow(getNoise(points[i][0], points[i][1], 0), p3)\n        //g2 = Math.pow(getNoise(points[i][0], points[i][1], 1), p3)\n        //b2 = Math.pow(getNoise(points[i][0], points[i][1], 2), p3)\n\n\n\n        if(Math.pow(Math.random(), p5) > 0.8)\n        {\n            var variety = 0\n            var test = Math.random()\n            if(test > 0.8)\n                variety = 2\n            else if(test > 0.6)\n                variety = 1\n\n            var noise = Math.pow(getNoise(points[i][0], points[i][1], variety), p4);\n            switch(variety) {\n                case 0:\n                    r2 = 0.349*noise\n                    g2 = 0.453*noise\n                    b2 = 0.651*noise\n                break;\n                case 1:\n                    r2 = 0.761*noise\n                    g2 = 0.592*noise\n                    b2 = 0.353*noise\n                break;\n                case 2:\n                    r2 = 0.592*noise\n                    g2 = 0.701*noise\n                    b2 = 0.773*noise \n                break\n            }\n\n            f3 = 1\n        }\n        else \n            f3 = 0\n\n        //0.349, 0.453, 0.651       \n        //0.761, 0.592, 0.353\n        //0.592, 0.701, 0.773\n\n        // Random\n        if(Math.pow(Math.random(), 6) > 0.98) {\n            var index = Math.floor(Math.random()*(sampleColors.length/3))\n            r = Math.max(sampleColors[index*3+0], 0)*f2\n            g = Math.max(sampleColors[index*3+1], 0)*f2\n            b = Math.max(sampleColors[index*3+2], 0)*f2\n            s += 0.3\n            /*r = sma\n            g = Math.random()\n            b = Math.random()*/\n        }\n\n        field.setValue(\"coords\", i*3 + 0, -1 + 2*points[i][0])\n        field.setValue(\"coords\", i*3 + 1, -1 + 2*points[i][1])\n        field.setValue(\"coords\", i*3 + 2, 2*points[i][2])\n\n        field.setValue(\"color\", i*3 + 0, Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1))\n        field.setValue(\"color\", i*3 + 1, Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1))\n        field.setValue(\"color\", i*3 + 2, Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1))\n\n        field.setValue(\"size\", i, s)\n        // field.setValue(\"color\", i*3 + 0, 1)\n        // field.setValue(\"color\", i*3 + 1, 1)\n        // field.setValue(\"color\", i*3 + 2, 1)\n        // field.setValue(\"size\", i, 1)\n    }\n\n    field.dirtyAttributes()\n\n    //console.log(\"Min: \" + min + \" Max: \" + max)\n}",
+			"file": "9 - StarCube2/index.js",
+			"file_size": 8859,
+			"file_write_time": 132096147201109823,
 			"settings":
 			{
-				"buffer_size": 15080,
+				"buffer_size": 8539,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"contents": "var projection = mat4.create()  // projection matrix\nvar modelview = mat4.create()   // modelview matrix; value comes from rotator\nvar normalMatrix = mat3.create()    // matrix, derived from modelview matrix, for transforming normal vectors\n\nvar scale = 1\nvar dt = 1000/60\nvar time = 0\n\nvar fieldSize = 100000\nvar seeds \nvar freqMin = 0.1 \nvar freqMax = 4\nvar sizeMin = 0.1\nvar sizeMax = 2\nvar frequencies = []\n\nvar sampleColors = [\n    0.349, 0.453, 0.651,\n    0.761, 0.592, 0.353,\n    0.235, 0.159, 0.159,\n    0.110, 0.110, 0.141,\n    0.816, 0.816, 0.899,\n    0.827, 0.69, 0.384, \n    0.592, 0.701, 0.773]\n\nvar texture\nvar framebuffer\n\nvar field = null\nvar cube = null\n\n//'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']\n/* Initialize the WebGL context.  Called from init() */\nfunction init() {\n    glInit(() => {\n\n        rotator = new TrackballRotator(canvas, draw, 15)\n        zoomer = new Zoomer(canvas) \n\n        reset()\n    })\n\n    document.body.onkeyup = function(e){\n        if(e.keyCode == 32){\n            reset()\n        }\n    }   \n}\n\nfunction loop() {\n    draw()\n\n    // setTimeout(loop, dt)\n\n    time += dt\n}\n\nfunction reset() {\n    frequencies = [\n        lerp(freqMin, freqMax, Math.random()),\n        lerp(freqMin, freqMax, Math.random()),\n        lerp(freqMin, freqMax, Math.random()),\n        4]\n\n    seeds = [Math.random(), Math.random(), Math.random(), Math.random()]\n\n    gl.viewport(0,0, canvas.width, canvas.height)\n    /* Create Objects */\n    field = initObject({\n        shader:\"unlitPoint\",\n        elements:fieldSize,\n        drawMode: gl.POINTS\n    })\n    generateField()\n\n    var color = defaultColors[0]\n    color.push(1)\n    var mat = initMaterial(\"phongTexture\", {\n        \"specularColor\": [0, 0, 0],\n        \"diffuseColor\": color,\n        \"specularExponent\": 1,\n        \"lightPosition\": defaultLights[1]\n    })\n\n    cube = initObject({\n        mat:mat,\n        modelName:\"uvSphere\"\n    })\n\n    /* Start draw field */\n    texture = gl.createTexture()\n    gl.bindTexture(gl.TEXTURE_2D, texture)\n    var size = 2048\n    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, \n    \t0, gl.RGBA, gl.UNSIGNED_BYTE, null)\n\n    gl.viewport(0,0,size, size)\n\n    framebuffer = gl.createFramebuffer()\n    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)\n    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)\n\n    drawField()\n\n    gl.generateMipmap(gl.TEXTURE_2D);\n\n    gl.bindFramebuffer(gl.FRAMEBUFFER, null)\n\n    // Draw mains stuff\n    gl.viewport(0,0,canvas.width, canvas.height)\n    draw()\n\n    /* End draw field */\n}\n\nfunction draw() { \n    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing\n    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);\n\n    // Draw flat field as background\n    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); \n    // modelview = rotator.getViewMatrix()//mat4.create()\n    modelview = mat4.create()\n \n    gl.disable(gl.DEPTH_TEST)\n\n    if(field) {\n        field.dirtyAttributes()\n        field.draw(modelview, projection, null)\n    }\n\n    gl.enable(gl.DEPTH_TEST) \n\n    // Draw perspective object\n    mat4.perspective(projection, Math.PI/5, 1, 10, 20);\n    modelview = rotator.getViewMatrix();\n\n    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))\n    if(zoomer) {\n\t    var zoom = zoomer.getZoomScale()\n\t    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))\n\t}\n    mat3.normalFromMat4(normalMatrix, modelview);\n\n    if(cube)\n        cube.draw(modelview, projection, normalMatrix)\n}\n\nfunction drawField() {\n    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing\n    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); \n\n    // Draw flat field as background\n    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); \n    modelview = mat4.create()\n \n    if(field) {\n        field.dirtyAttributes()\n        field.draw(modelview, projection, null)\n    }\n}\n\nfunction getNoise(x, y, i) {\n    noise.seed(seeds[i])\n    return 0.5 + noise.simplex2(x*frequencies[i], y*frequencies[i])/2;\n}\n\nfunction generateField() {\n    var width = 1;\n    var height = 1;\n    points = []\n    for(let i = 0; i < fieldSize; i++) {\n        // Add random point to canvas\n        var randX =  Math.random()\n        var randY =  Math.random()\n        var randZ = -4\n\n        var vec = vec3.fromValues(randX, randY, randZ)\n        points.push(vec)\n    }\n\n\n    // Update coords from points\n    var s = 0\n    var c = 0\n    var c2 = 0\n    var c3 = 0\n\n    var r = 0 \n    var g = 0\n    var b = 0\n\n    var r2 = 0\n    var g2 = 0\n    var b2 = 0\n\n    var p = 10\n    var p2 = 1 \n    var p3 = 3\n    var p4 = 1\n    var p5 = 5\n\n    var f = 0.1\n    var f2 = 1.5\n    var f3 = 0\n\n    var freq = 10\n    var min = 1\n    var max = 0\n    for(let i = 0; i < fieldSize; i++) {\n        s = lerp(sizeMin, sizeMax, Math.random())\n        // c = Math.pow(lerp(Math.random(), getNoise(points[i][0], points[i][1], 3), Math.random()), p)\n        c = Math.pow(Math.random(), p)*f\n        c2 = Math.pow(getNoise(points[i][0], points[i][1], 3), p2)*f\n        /*if(c2 < min)\n            min = c2\n        if(c2 > max)\n            max = c2*/\n        r = g = b = lerp(c, c2, Math.pow(Math.random(), p3))\n\n\n        //r2 = Math.pow(getNoise(points[i][0], points[i][1], 0), p3)\n        //g2 = Math.pow(getNoise(points[i][0], points[i][1], 1), p3)\n        //b2 = Math.pow(getNoise(points[i][0], points[i][1], 2), p3)\n\n\n\n        if(Math.pow(Math.random(), p5) > 0.8)\n        {\n            var variety = 0\n            var test = Math.random()\n            if(test > 0.8)\n                variety = 2\n            else if(test > 0.6)\n                variety = 1\n\n            var noise = Math.pow(getNoise(points[i][0], points[i][1], variety), p4);\n            switch(variety) {\n                case 0:\n                    r2 = 0.349*noise\n                    g2 = 0.453*noise\n                    b2 = 0.651*noise\n                break;\n                case 1:\n                    r2 = 0.761*noise\n                    g2 = 0.592*noise\n                    b2 = 0.353*noise\n                break;\n                case 2:\n                    r2 = 0.592*noise\n                    g2 = 0.701*noise\n                    b2 = 0.773*noise \n                break\n            }\n\n            f3 = 1\n        }\n        else \n            f3 = 0\n\n        //0.349, 0.453, 0.651       \n        //0.761, 0.592, 0.353\n        //0.592, 0.701, 0.773\n\n        // Random\n        if(Math.pow(Math.random(), 6) > 0.98) {\n            var index = Math.floor(Math.random()*(sampleColors.length/3))\n            r = Math.max(sampleColors[index*3+0], 0)*f2\n            g = Math.max(sampleColors[index*3+1], 0)*f2\n            b = Math.max(sampleColors[index*3+2], 0)*f2\n            s += 0.3\n            /*r = sma\n            g = Math.random()\n            b = Math.random()*/\n        }\n\n        field.setValue(\"coords\", i*3 + 0, -1 + 2*points[i][0])\n        field.setValue(\"coords\", i*3 + 1, -1 + 2*points[i][1])\n        field.setValue(\"coords\", i*3 + 2, 2*points[i][2])\n\n        field.setValue(\"color\", i*3 + 0, Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1))\n        field.setValue(\"color\", i*3 + 1, Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1))\n        field.setValue(\"color\", i*3 + 2, Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1))\n\n        field.setValue(\"size\", i, s)\n        // field.setValue(\"color\", i*3 + 0, 1)\n        // field.setValue(\"color\", i*3 + 1, 1)\n        // field.setValue(\"color\", i*3 + 2, 1)\n        // field.setValue(\"size\", i, 1)\n    }\n\n    field.dirtyAttributes()\n\n    //console.log(\"Min: \" + min + \" Max: \" + max)\n}",
+			"file": "10 - StarOrb1/index.js",
+			"file_size": 7994,
+			"file_write_time": 132096147588169430,
+			"settings":
+			{
+				"buffer_size": 7700,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "README.md",
+			"settings":
+			{
+				"buffer_size": 415,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "6 - BacteriaColorful/index.html",
+			"settings":
+			{
+				"buffer_size": 1312,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "6 - BacteriaColorful/index.js",
+			"settings":
+			{
+				"buffer_size": 6985,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "base/trackball-rotator.js",
+			"file": "base/gl-base.js",
 			"settings":
 			{
-				"buffer_size": 10356,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "compile.sh",
-			"settings":
-			{
-				"buffer_size": 165,
-				"encoding": "UTF-8",
+				"buffer_size": 16755,
 				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "Play/10 - StarOrb1.html",
-			"settings":
-			{
-				"buffer_size": 103890,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "base/basic-object-models-IFS.js",
-			"settings":
-			{
-				"buffer_size": 18545,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "11 - StarOrb2/index.html",
-			"settings":
-			{
-				"buffer_size": 8892,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
 			}
 		}
 	],
@@ -667,21 +670,49 @@
 	"expanded_folders":
 	[
 		"/C/Users/James/Dropbox/Projects/webglfun",
-		"/C/Users/James/Dropbox/Projects/webglfun/11 - StarOrb2",
-		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit",
 		"/C/Users/James/Dropbox/Projects/webglfun/base",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/shaders",
 		"/C/Users/James/Dropbox/Projects/webglfun/Source"
 	],
 	"file_history":
 	[
+		"/C/Users/James/Dropbox/Projects/webglfun/10 - StarOrb1/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/9 - StarOrb/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Play/9 - StarOrb.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/7 - Starfield1/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/8 - StarCube1/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/7 - Starfield1/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/8 - StarCube1/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/2 - TriOrbit/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/3 - Bacteria1/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/3 - Bacteria1/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/4 - Bacteria2/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/4 - Bacteria2/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/5 - Bacteria3/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/6 - BacteriaColorful/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/6 - BacteriaColorful/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/5 - Bacteria3/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/2 - TriOrbit/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/1 - CrazyTrippyRingThing/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/zoomer.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/1 - CrazyTrippyRingThing/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/11 - StarOrb2/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/trackball-rotator.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/README.md",
+		"/C/Users/James/Dropbox/Projects/webglfun/compile.sh",
+		"/C/Users/James/Dropbox/Projects/webglfun/Play/10 - StarOrb1.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/basic-object-models-IFS.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit1/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit/index.js",
 		"/C/Users/James/Dropbox/Projects/webglfun/11 - StarOrb2/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/11 - StarOrb2/index.js",
 		"/C/Users/James/Dropbox/mystuff/src/server/routes/util.js",
 		"/C/Users/James/Dropbox/mystuff/src/server/routes/user.js",
 		"/C/Users/James/Dropbox/mystuff/src/css/style.css",
 		"/C/Users/James/Dropbox/mystuff/src/css/util/gallery.css",
 		"/C/Users/James/Dropbox/mystuff/src/js/templates/component_image.js",
 		"/C/Users/James/Dropbox/mystuff/src/js/component.js",
-		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit/index.html",
 		"/C/Users/James/Dropbox/mystuff/src/js/util/gallery.js",
 		"/C/Users/James/Dropbox/mystuff/src/server/routes/post.js",
 		"/C/Users/James/Dropbox/mystuff/src/js/viewer.js",
@@ -724,8 +755,6 @@
 		"/F/Documents/SavedGames/Chopper/Levels/Player1/Level_0_7",
 		"/F/Documents/SavedGames/Chopper/Levels/Player1/Level_0_3",
 		"/C/Users/James/Dropbox/Projects/webglfun/TriOrbit/index.js",
-		"/C/Users/James/Dropbox/Projects/webglfun/base/zoomer.js",
-		"/C/Users/James/Dropbox/Projects/webglfun/compile.sh",
 		"/C/Users/James/Dropbox/Projects/webglfun/CrazyTrippyRingThing/index.js",
 		"/C/Users/James/Dropbox/Projects/webglfun/TriOrbit/index.html",
 		"/C/Users/James/Dropbox/Projects/webglfun/CrazyTrippyRingThing/index.html",
@@ -774,34 +803,7 @@
 		"/F/MyFiles_B/Education/College/Term 4/Term Lab 4 - Mad Monkey/Level Editor/Instructions.txt",
 		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab6/lab6.s",
 		"/F/System/Config/Keys.txt",
-		"/F/System/Config/path.txt",
-		"/C/Users/James/Dropbox/ImgsurfWorking/server.js",
-		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab6/lab6.txt",
-		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab5/lab.s",
-		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab5/timerisr.s",
-		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Post.metadata.json",
-		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Post.bson",
-		"/C/HaxLogs.txt",
-		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Component.metadata.json",
-		"/C/Users/James/Desktop/zBrush/install - Read first.txt",
-		"/F/MyFiles_B/Projects/Cell Strapped/todo.txt",
-		"/F/Documents/Web Design/old/workinprogress/Templates/Main.dwt",
-		"/F/Documents/Game Design/Game Maker/Games 08/De Ball2/Game Maker Instructions.txt",
-		"/F/Documents/Game Design/Game Maker/Game Maker 5.3/Gmaker53/GM_License.txt",
-		"/F/Documents/Game Design/Game Maker/Game Maker 5.3/Username Lawyer Key 521992106660A657.txt",
-		"/F/Documents/Game Design/SniperX/SniperX/Game1.cs",
-		"/F/Documents/Game Design/SQRZ/Program (2).cs",
-		"/F/Documents/Game Design/SQRZ/Farseer/Farseer.csproj",
-		"/F/Documents/Game Design/SQRZ/SQRZ.cs",
-		"/F/Documents/Game Design/SniperX/SniperX/Program.cs",
-		"/F/Documents/Game Design/SniperX/SniperX/Game1_2.cs",
-		"/C/Users/James/Dropbox/mystuff/src/css/post.css",
-		"/C/Users/James/Dropbox/mystuff/src/js/templates/post_grid.js",
-		"/C/Users/James/Dropbox/mystuff/src/js/util/animate.js",
-		"/F/MyFiles_B/Career/Website/source/pages/homev2.htm",
-		"/F/MyFiles_B/Career/Website/source/javascripts/app.js",
-		"/F/MyFiles_B/Career/Portfolio/Portfolio.docx",
-		"/F/Documents/Web Design/old/StormAnims/Home/home.html"
+		"/F/System/Config/path.txt"
 	],
 	"find":
 	{
@@ -849,6 +851,10 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"zoomer",
+			"rotator",
+			"clearVal",
+			"clearColor",
 			"bodyMesh",
 			"body",
 			"bodies[i].scale)",
@@ -972,11 +978,7 @@
 			"left",
 			"getRestorePoints",
 			".options",
-			"#postViewer",
-			"showUnity",
-			"unityOptions",
-			"setupUnity",
-			"none"
+			"#postViewer"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1044,24 +1046,24 @@
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 4,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "11 - StarOrb2/index.js",
+					"file": "9 - StarCube2/index.js",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 15080,
+						"buffer_size": 8539,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2463,
-								2463
+								1624,
+								1624
 							]
 						],
 						"settings":
@@ -1071,19 +1073,136 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 1360.0,
+						"translation.y": 810.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "10 - StarOrb1/index.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 7700,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3465,
+								3336
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1823.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "README.md",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 415,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								238,
+								238
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Markdown/Markdown.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "6 - BacteriaColorful/index.html",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1312,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								327,
+								327
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/HTML/HTML.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "6 - BacteriaColorful/index.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6985,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								4384,
+								4384
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 3209.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
 					"type": "text"
 				},
 				{
-					"buffer": 1,
-					"file": "base/trackball-rotator.js",
+					"buffer": 5,
+					"file": "base/gl-base.js",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 10356,
+						"buffer_size": 16755,
 						"regions":
 						{
 						},
@@ -1101,128 +1220,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 594.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 2,
-					"type": "text"
-				},
-				{
-					"buffer": 2,
-					"file": "compile.sh",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 165,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								11,
-								11
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/ShellScript/Bash.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "Play/10 - StarOrb1.html",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 103890,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								103850,
-								103850
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/HTML/HTML.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 44299.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "base/basic-object-models-IFS.js",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 18545,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1323,
-								1323
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 378.0,
+						"translation.y": 6899.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "11 - StarOrb2/index.html",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 8892,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								7479,
-								7479
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/HTML/HTML.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 4415.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
 					"type": "text"
 				}
 			]
