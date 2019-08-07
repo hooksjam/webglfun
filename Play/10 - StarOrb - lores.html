@@ -10,9 +10,94 @@
     label {
         white-space: pre;
     }
+    body {
+      background-color:black;
+    }
+    .slidecontainer {
+      width: 100%; /* Width of the outside container */
+    }
+
+    /* The slider itself */
+    .slider {
+      -webkit-appearance: none;  /* Override default CSS styles */
+      appearance: none;
+      width: 50%; /* Full-width */
+      height: 15px; /* Specified height */
+      background: #d3d3d3; /* Grey background */
+      outline: none; /* Remove outline */
+      opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+      -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+      transition: opacity .2s;
+    }
+
+    /* Mouse-over effects */
+    .slider:hover {
+      opacity: 1; 
+    }
 </style>
 
-<script type="x-shader/x-vertex" id="phong-vshader-source">
+<script type="x-shader/x-vertex" id="phongTexture-vshader-source">
+   attribute vec3 a_coords;
+    attribute vec2 a_texcoord;
+    attribute vec3 a_normal;
+
+    uniform mat4 modelview;
+    uniform mat4 projection; 
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords; 
+    varying vec2 v_texcoord;
+
+    void main() {
+      vec4 coords = vec4(a_coords, 1.0);
+      vec4 eyeCoords = modelview * coords;
+      gl_Position = projection * eyeCoords;
+
+      v_normal = a_normal;
+      v_texcoord = a_texcoord;
+      v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird) 
+    } 
+</script>
+
+<script type="x-shader/x-fragment" id="phongTexture-fshader-source">
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+  #else
+    precision mediump float;
+  #endif
+  uniform mat3 normalMatrix; 
+  uniform sampler2D u_texture;
+  uniform vec4 lightPosition;
+  uniform vec3 specularColor;
+  uniform float specularExponent; 
+  varying vec2 v_texcoord;
+  varying vec3 v_normal;
+  varying vec3 v_eyeCoords;
+
+  void main() {
+    vec3 N, L, R, V;  // vectors for lighting equation
+    N = normalize( normalMatrix*v_normal );
+    if ( lightPosition.w == 0.0 ) {
+        L = normalize( lightPosition.xyz );
+    } else {
+        L = normalize( lightPosition.xyz/lightPosition.w - v_eyeCoords );
+    }
+    R = -reflect(L,N);
+    V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+    if ( dot(L,N) <= 0.0 ) {
+        gl_FragColor = vec4(0,0,0,1);
+    } else {
+        vec4 sample = texture2D(u_texture, v_texcoord);
+        vec3 color = 0.8*dot(L,N) * sample.rgb;
+
+        if (dot(R,V) > 0.0) {
+            color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
+        } 
+        gl_FragColor = vec4(color, 1);
+    } 
+  }    
+</script>
+
+<script type="x-shader/x-vertex" id="phongColor-vshader-source">
     attribute vec3 a_coords;
     attribute vec3 a_normal;
     uniform mat4 modelview;
@@ -24,11 +109,11 @@
         vec4 eyeCoords = modelview * coords;
         gl_Position = projection * eyeCoords;
         v_normal = normalize(a_normal);
-        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird)
+        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; 
     }
 </script>
 
-<script type="x-shader/x-fragment" id="phong-fshader-source">
+<script type="x-shader/x-fragment" id="phongColor-fshader-source">
     #ifdef GL_FRAGMENT_PRECISION_HIGH
        precision highp float;
     #else
@@ -65,94 +150,62 @@
     }
 </script>
 
-
-<script type="x-shader/x-vertex" id="basicTexture-vshader-source">
+<script type="x-shader/x-vertex" id="unlitTexture-vshader-source">
   attribute vec3 a_coords;
   attribute vec2 a_texcoord;
-  attribute vec3 a_normal;
-
   uniform mat4 modelview;
   uniform mat4 projection; 
-  varying vec3 v_normal;
-  varying vec3 v_eyeCoords; 
   varying vec2 v_texcoord;
 
   void main() {
     vec4 coords = vec4(a_coords, 1.0);
     vec4 eyeCoords = modelview * coords;
     gl_Position = projection * eyeCoords;
-
-    v_normal = a_normal;
     v_texcoord = a_texcoord;
-    v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird) 
   } 
+
 </script>
 
-<script type="x-shader/x-fragment" id="basicTexture-fshader-source">
+<script type="x-shader/x-fragment" id="unlitTexture-fshader-source">
   #ifdef GL_FRAGMENT_PRECISION_HIGH
     precision highp float;
   #else
     precision mediump float;
   #endif
-  uniform mat3 normalMatrix; 
   uniform sampler2D u_texture;
-  uniform vec4 lightPosition;
   varying vec2 v_texcoord;
-  varying vec3 v_normal;
-  varying vec3 v_eyeCoords;
+
   void main() {
-    vec3 N, L, R, V;  // vectors for lighting equation
-    N = normalize( normalMatrix*v_normal );
-    if ( lightPosition.w == 0.0 ) {
-        L = normalize( lightPosition.xyz );
-    }
-    else {
-        L = normalize( lightPosition.xyz/lightPosition.w - v_eyeCoords );
-    }
-    R = -reflect(L,N);
-    V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
-    if ( dot(L,N) <= 0.0 ) {
-        gl_FragColor = vec4(0,0,0,1);
-    }
-    else {
-        vec4 base = vec4(0.1, 0.1, 0.1, 0.1);
-        vec4 sample = base + texture2D(u_texture, v_texcoord);
-        vec3 color = 0.8*dot(L,N) * sample.rgb;
-        gl_FragColor = vec4(color, 1);
-    } 
-  }     
+    gl_FragColor = texture2D(u_texture, v_texcoord);
+  }    
 </script>
-        <!-- vec4 sample = texture2D(u_texture, v_texcoord) -->
-        <!-- vec3 color = 0.8*dot(L,N); -->
 
 
-<script type="x-shader/x-vertex" id="basic-vshader-source">
+<script type="x-shader/x-vertex" id="unlitUniformColor-vshader-source">
   attribute vec3 a_coords;
-  attribute vec3 a_color;
-  varying vec3 v_color;
   uniform mat4 modelview;
   uniform mat4 projection; 
+
   void main() {
-    vec4 coords = vec4(a_coords, 1.0);
-    vec4 eyeCoords = modelview * coords;
-    gl_Position = projection * eyeCoords;
-    v_color = a_color;
+      vec4 coords = vec4(a_coords, 1.0);
+      vec4 eyeCoords = modelview * coords;
+      gl_Position = projection * eyeCoords;
   } 
 </script>
 
-<script type="x-shader/x-fragment" id="basic-fshader-source">
+<script type="x-shader/x-fragment" id="unlitUniformColor-fshader-source">
   #ifdef GL_FRAGMENT_PRECISION_HIGH
-    precision highp float;
+      precision highp float;
   #else
-    precision mediump float;
+      precision mediump float;
   #endif
-  varying vec3 v_color;
-  void main() {
-    gl_FragColor = vec4(v_color, 1.0);
-  }     
-</script>
+  uniform vec3 color;
 
-<script type="x-shader/x-vertex" id="point-vshader-source">
+  void main() {
+      gl_FragColor = vec4(color, 1.0);
+  }       
+</script>
+<script type="x-shader/x-vertex" id="unlitPoint-vshader-source">
   attribute vec3 a_coords;
   attribute vec3 a_color;
   attribute float a_size;
@@ -168,7 +221,7 @@
   } 
 </script>
 
-<script type="x-shader/x-fragment" id="point-fshader-source">
+<script type="x-shader/x-fragment" id="unlitPoint-fshader-source">
   #ifdef GL_FRAGMENT_PRECISION_HIGH
     precision highp float;
   #else
@@ -180,6 +233,60 @@
   }     
 </script>
 
+<script type="x-shader/x-vertex" id="cubemapReflection-vshader-source">
+     uniform mat4 projection;
+     uniform mat4 modelview;
+     attribute vec3 a_coords;
+     attribute vec3 a_normal;
+     varying vec3 v_eyeCoords;
+     varying vec3 v_normal;
+     void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_eyeCoords = eyeCoords.xyz;
+        v_normal = normalize(a_normal);
+     }
+</script>
+
+<script type="x-shader/x-fragment" id="cubemapReflection-fshader-source">
+     precision mediump float;
+     varying vec3 v_normal;
+     varying vec3 v_eyeCoords;
+     uniform samplerCube skybox;
+     uniform mat3 normalMatrix;
+     uniform mat3 inverseViewTransform;
+     void main() {
+          vec3 N = normalize(normalMatrix * v_normal);
+          vec3 V = -v_eyeCoords;
+          vec3 R = -reflect(V,N);
+          vec3 T = inverseViewTransform * R; // Transform by inverse of the view transform that was applied to the skybox
+          gl_FragColor = textureCube(skybox, T)*2.5;
+          //gl_FragColor = vec4(0,0,1,1);
+     }
+</script>
+
+<script type="x-shader/x-vertex" id="skybox-vshader-source">
+     uniform mat4 projection;
+     uniform mat4 modelview;
+     attribute vec3 a_coords;
+     varying vec3 v_coords;
+     void main() {
+        vec4 eyeCoords = modelview * vec4(a_coords,1.0);
+        gl_Position = projection * eyeCoords;
+        v_coords = a_coords;
+     }
+</script>
+
+<script type="x-shader/x-fragment" id="skybox-fshader-source">
+     precision mediump float;
+     varying vec3 v_coords;
+     uniform samplerCube skybox;
+     void main() {
+          //gl_FragColor = textureCube(skybox, v_coords);
+          gl_FragColor = textureCube(skybox, normalize(v_coords.xyz));
+          //gl_FragColor = vec4(1,0,0,1);
+     }
+</script>
 <script>/**
  * @fileoverview gl-matrix - High performance matrix and vector operations
  * @author Brandon Jones
@@ -468,15 +575,19 @@ function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, vi
 
 </script>
 <script>
-function Zoomer(canvas) {
+function Zoomer(canvas, startZoom = 1) {
     canvas.addEventListener("DOMMouseScroll", mousewheel, false);
     canvas.addEventListener("mousewheel", mousewheel, false);
+
+    function zclamp(v) {
+        return Math.max(Math.min(v, zoomInLimit), zoomOutLimit)
+    }
 
     var vec = [1,1,1]
 
     var delta = 0
     var velocity = 0
-    var scale = 1
+    var scale = startZoom
 
     function mousewheel( e)
     {
@@ -506,9 +617,18 @@ function Zoomer(canvas) {
     } 
 
     this.getZoomScale = function() {
-        scale = Math.max(scale+velocity,0)
-        velocity = velocity*(1-0.05)
-        return Math.pow(scale, 2)
+        scale += velocity
+        if(scale > 1) {
+            scale = 1
+            velocity = 0
+        } else if(scale < 0) {
+            scale = 0
+            velocity = 0
+        } else {
+            velocity = velocity*(1-0.05)
+        }
+        return scale
+        // return Math.pow(scale, 2)
         // return vec
 
     }
@@ -641,6 +761,39 @@ function cube(side) {
    face( [-s,-s,-s, s,-s,-s, s,-s,s, -s,-s,s], [0,-1,0] );
    face( [s,-s,-s, s,s,-s, s,s,s, s,-s,s], [1,0,0] );
    face( [-s,-s,-s, -s,-s,s, -s,s,s, -s,s,-s], [-1,0,0] );
+   return {
+      vertexPositions: new Float32Array(coords),
+      vertexNormals: new Float32Array(normals),
+      vertexTextureCoords: new Float32Array(texCoords),
+      indices: new Uint16Array(indices)
+   }
+}
+
+ /**
+  * Create a model of a cube, centered at the origin.  (This is not
+  * a particularly good format for a cube, since an IFS representation
+  * has a lot of redundancy.)
+  * @side the length of a side of the cube.  If not given, the value will be 1.
+  */
+function plane(side) {
+   var s = (side || 1)/2;
+   var coords = [];
+   var normals = [];
+   var texCoords = [];
+   var indices = [];
+   function face(xyz, nrm) {
+      var start = coords.length/3;
+      var i;
+      for (i = 0; i < 12; i++) {
+         coords.push(xyz[i]);
+      }
+      for (i = 0; i < 4; i++) {
+         normals.push(nrm[0],nrm[1],nrm[2]);
+      }
+      texCoords.push(0,0,1,0,1,1,0,1);
+      indices.push(start,start+1,start+2,start,start+2,start+3);
+   }
+   face( [-s,0,-s, -s,0,s, s,0,s, s,0,-s], [0,1,0] );
    return {
       vertexPositions: new Float32Array(coords),
       vertexNormals: new Float32Array(normals),
@@ -1431,26 +1584,76 @@ function uvCone(radius, height, slices, noBottom) {
 
 })(this);
 </script>
+<script>function shuffle(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+function lerp(a, b, f) {
+    return a + f * (b - a)
+}
+
+function clamp(v, min, max) {
+    return Math.max(Math.min(v, max), min)
+}</script>
 <script>"use strict";
 
 var shaders = {
     "unlitPoint": {
         source: "unlitPoint.c",
-        attributes: ["coords, color","size"],
-        uniforms: ["modelview", "projection"],
-        index_buffer: false
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3",
+            "size":"float"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        },
+        indices: false
     },
 
     "unlitColor": {
         source: "unlitColor.c",
-        attributes: ["coords, color"],
-        uniforms: ["modelview", "projection"]
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        }
+    },
+
+    "unlitUniformColor": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "color":"vec3"
+        }
     },
 
     "unlitTexture": {
         source: "unitTexture.c",
-        attributes: ["coords", "normal", "texcoord"],
-        uniforms: ["modelview", "projection"]
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3",
+            "texcoord":"vec2"
+        }, 
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        }
     },
 
     "lambertColor": {
@@ -1463,31 +1666,101 @@ var shaders = {
 
     "phongColor": {
         source: "phongColor.c",
-        attributes: ["coords", "normal"],
-        uniforms: ["modelview", "projection", "normalMatrix", "lightPosition", "diffuseColor", "specularColor", "specularExponent"]
-    }
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "specularColor":"vec3",
+            "specularExponent":"float"
+        }
+    },
+    "phongTexture": {
+        source: "phongTexture.c",
 
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3",
+            "texcoord":"vec2"
+        }, 
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "specularColor":"vec3",
+            "specularExponent":"float"
+        }  
+    },
+
+    "skybox": {
+        source: "skybox.c",
+        attributes: {
+            "coords": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "skybox":"samplerCube",
+        }
+    },
+
+    "cubemapReflection": {
+        source: "cubemapReflection.c",
+        attributes: {
+            "coords": "vec3",
+            "normal": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "inverseViewTransform":"mat3",
+            "skybox":"samplerCube"
+        }
+    } 
 }
-var materials = {}
 
+var materials = {}
+var currentMat
 var gl   // The webgl context.
 var canvas
-
 var transformStack = []
 
+var clearVal = 0
+
+var defaultObjects = {  // Objects for display, selected by popup menu
+    "cube": cube(5),
+    "uvTorus": uvTorus(3,1,64,32),
+    "uvCylinder": uvCylinder(1.5,5.5),
+    "uvCone": uvCone(2.5,5.5),
+    "uvSphere": uvSphere(3),
+    "uvSphere2": uvSphere(3,12,6)
+}
+var defaultColors = [[1,1,1], [1,0,0], [0,1,0], [0,0,1], [0,1,1], [1,0,1], [1,1,0], [0,0,0], [0.5,0.5,0.5]]
+var defaultLights = [[0,0,0,1], [0,0,1,0], [0,1,0,0], [0,0,-10,1], [2,3,5,0]]
+
+var rotator  
+var zoomer
+
 function pushTransform(tran) {
-    transformStack.push(tran)
+    transformStack.push(mat4.clone(tran))
 }
 
-function popTransform() {
-    return transformStack.pop()
+function popTransform(tran) {
+    return mat4.copy(tran, transformStack.pop())
 }
 /**
  * initialization function that will be called when the page has loaded
  */
 function glInit(callback) {
     try {
-        var canvas = document.getElementById("webglcanvas");
+        canvas = document.getElementById("webglcanvas");
         gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if ( ! gl ) {
             throw "Browser does not support WebGL";
@@ -1499,7 +1772,7 @@ function glInit(callback) {
         return;
     }
     try {
-        callback(canvas)
+        callback()
     }
     catch (e) {
         document.getElementById("canvas-holder").innerHTML =
@@ -1536,6 +1809,9 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     try {
         var vertexShaderSource = getTextContent( vertexShaderID );
         var fragmentShaderSource = getTextContent( fragmentShaderID );
+        // console.log("PROGRAM")
+        // console.log(vertexShaderSource)
+        // console.log(fragmentShaderSource)
     }
     catch (e) {
         throw "Error: Could not get shader source code from script elements.";
@@ -1562,128 +1838,359 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     return prog;
 }
 
-/**
- * Shuffles array in place.
- * @param {Array} a items An array containing the items.
- */
-function shuffle(a) {
-    var j, x, i;
-    for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(Math.random() * (i + 1));
-        x = a[i];
-        a[i] = a[j];
-        a[j] = x;
-    }
-    return a;
-}
-
-function lerp(a, b, f) {
-    return a + f * (b - a)
-}
-
-function clamp(v, min, max) {
-    return Math.max(Math.min(v, max), min)
-}
-
-function initMaterial(name) {
-    if(!(name in shaders)) {
-        console.log("Shader not defined in base, go there and do it")
+function initMaterial(shader, options = {}) {
+    if(!(shader in shaders)) {
+        console.log("Shader '" + shader + "' not defined in base, go there and do it")
         return
     }
 
-    var prog
-    if("prog" in shaders[name] && shaders[name]["prog"] != null)
-        prog = shaders[name]["prog"]
-    else
-        prog = createProgram(gl, name + "-vshader-source", name + "-fshader-source");
+    console.log("INIT")
+    var label = options.name || shader
+    // console.log("INIT MATERIALS " + name)
 
-    shaders[name]["prog"] = prog
-    gl.useProgram(prog);
+    // Load shader into script tag?
 
-    if(name in mat)
-        return mat[name]
-    else {
+    if(!(label in materials)) {
         // Create material
-        var newMat = {}
+        var mat = {
+            shader:shader,
+            name:label,
+            attributes:{},
+            uniforms:{}
+        }
+        var prog
 
-        for(let i = 0; i < shaders[name].attributes; i++) {
-            var atr = shaders[name].attributes[i]
-            newMat["a_"+atr+"_loc"] = gl.getAttribLocation(prog, "a_"+atr)
-            newMat["a_"+atr+"_buffer"] = gl.createBuffer()
+        mat.loadProgram = () => {
+            if("prog" in shaders[shader] && shaders[shader]["prog"] != null)
+                prog = shaders[shader]["prog"]
+            else {
+                prog = createProgram(gl, shader + "-vshader-source", shader + "-fshader-source");
+                shaders[shader]["prog"] = prog
+            }
+
+            gl.useProgram(prog); 
+            currentMat = mat.label
+        }
+        mat.loadProgram()
+
+        for(var atr in shaders[shader]["attributes"]) {
+            mat["attributes"][atr] = {
+                "loc": gl.getAttribLocation(prog, "a_"+atr),
+                "buffer": gl.createBuffer(),
+                "type": shaders[shader]["attributes"][atr]
+            }
         }
 
-        for(let i = 0; i < shaders[name].uniforms; i++) {
-            var uni = shaders[name].uniforms[i]
-            newMat[uni] = gl.getUniformLocation(prog, uni)
+        for(var uni in shaders[shader]["uniforms"]) {
+            // console.log("")
+            var loc = gl.getUniformLocation(prog, uni)
+            // console.log("Getting uniform location for " + uni)
+            mat["uniforms"][uni] = {
+                "loc": loc,//gl.getUniformLocation(prog, uni),
+                "type": shaders[shader]["uniforms"][uni]
+            }
         }
 
-        if(!("index_buffer" in shaders[name] && !shaders[name]["index_buffer"]))
-            newMat["index_buffer"] = gl.createBuffer();
+        if(!("indices" in shaders[shader] && !shaders[shader]["indices"])) {
+            mat["indices"] = {
+                "buffer": gl.createBuffer()
+            }
+        }
 
-        mat[name] = newMat
+        mat.setUniform = (uni, vals, write = true) => {
+            if(vals == null)
+                return
+            if(uni in mat["uniforms"]) {
+                var type = mat["uniforms"][uni]["type"]
+                var u_loc = mat["uniforms"][uni]["loc"]
+
+                // console.log("Setting uniform " + uni + " for " + name)
+                // console.log(type)
+
+                switch(type) {
+                    case "float":
+                        gl.uniform1f(u_loc, vals);
+                    break
+                    case "vec2":
+                        gl.uniform2f(u_loc, vals[0], vals[1]); 
+                    break
+                    case "vec3":
+                        gl.uniform3f(u_loc, vals[0], vals[1], vals[2]); 
+                    break
+                    case "vec4":
+                        gl.uniform4f(u_loc, vals[0], vals[1], vals[2], vals[3]); 
+                    break
+                    case "mat3":
+
+                        // console.log("Setting uniform " + uni + " for " + name)
+                        // console.log(type)
+                        // console.log(u_loc)
+                        gl.uniformMatrix3fv(u_loc, false, vals)
+                    break
+                    case "mat4":
+                        gl.uniformMatrix4fv(u_loc, false, vals)
+                    break
+                    case "skybox":
+                    break
+                    default:
+                    break
+                }
+
+                if(write && type != "skybox")
+                    mat["uniforms"][uni]["vals"] = vals
+            }
+        }
+
+        mat.setAttribute = (atr, vals, options = {}) => {
+            if(!(atr in mat["attributes"])) {
+                console.log("Attribute " + atr + " not in material")
+                console.log(mat)
+                return
+            }
+            var mode = gl.STREAM_DRAW
+            if("mode" in options) mode = options.mode
+
+            var dim = typeDim(mat["attributes"][atr]["type"])
+            var loc = mat["attributes"][atr]["loc"]
+            var buffer = mat["attributes"][atr]["buffer"]
+
+            // console.log("Setting attribute " + atr)
+            // console.log(vals)
+            // console.log(dim)
+            // console.log(loc)
+            // console.log(mode)
+            // console.log(gl.STATIC_DRAW)
+            // console.log(buffer)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+            gl.bufferData(gl.ARRAY_BUFFER, vals, mode)
+            gl.vertexAttribPointer(loc, dim, gl.FLOAT, false, 0, 0)
+            gl.enableVertexAttribArray(loc)
+        }
+
+        mat.setIndices = (ind) => {
+            if("indices" in mat) {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mat["indices"]["buffer"]);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ind, gl.STATIC_DRAW);
+            } 
+        }
+        // console.log("INIT MAY")
+        // console.log(mat)
+
+        materials[label] = mat
     }
+
+    // Set uniforms from options
+    for(var uni in options) {
+        // console.log("Setting uniform " + uni + " from start")
+        materials[label].setUniform(uni, options[uni])
+    }
+
+    // currentMat = label
+    return materials[label]
 }
 
-</script>
-<script>var a_coords_loc       // Location of the a_coords attribute variable in the shader program.
-var a_coords_buffer    // Buffer to hold the values for a_coords.
-var a_size_loc = -1
-var a_size_buffer
-var a_color_loc = -1
-var a_color_buffer
-var a_texcoord_loc = -1
-var a_texcoord_buffer
+function typeDim(type) {
+    switch(type) {
+        case "float":
+            return 1
+        case "vec2":
+            return 2
+        case "vec3":
+            return 3
+        case "vec4":
+            return  4
+    } 
+}
 
-var u_diffuseColor     // Locations of uniform variables in the shader program
-var u_specularColor
-var u_specularExponent
-var u_lightPosition
-var u_modelview
-var u_projection
-var u_normalMatrix   
+function initObject(options = {}) {
+    console.log("Creating object with options")
+    console.log(options)
 
-var canvas
-var projection = mat4.create()    // projection matrix
-var modelview                    // modelview matrix; value comes from rotator
-var normalMatrix = mat3.create();  // matrix, derived from modelview matrix, for transforming normal vectors
-var rotator  // A TrackballRotator to implement rotation by mouse.
-var zoomer
-var colors = [  // RGB color arrays for diffuse and specular color values, selected by popup menu
-    [1,1,1], [1,0,0], [0,1,0], [0,0,1], [0,1,1], [1,0,1], [1,1,0], [0,0,0], [0.5,0.5,0.5]
-];
-var lightPositions = [  // values for light position, selected by popup menu
-    [0,0,0,1], [0,0,1,0], [0,1,0,0], [0,0,-10,1], [2,3,5,0]
-];
-var objects = [  // Objects for display, selected by popup menu
-    cube(5),
-    uvTorus(3,1,64,32),
-    uvCylinder(1.5,5.5),
-    uvCone(2.5,5.5),
-    uvSphere(3),
-    uvSphere(3,12,6)
-];
-var currentModelNumber;  // contains data for the current object
+    if(!("mat" in options) && !("shader" in options)) {
+        console.log("Must include mat or name in options")
+        return
+    }
 
-var points = []
-var coords = new Float32Array()
-var colors = new Float32Array()
-var normals = new Float32Array()
-var sizes = new Float32Array()
+    var mat = options.mat || initMaterial(options.shader)
+    var drawMethod = options.drawMethod || "arrays"
+    var drawMode = gl.TRIANGLES
+    var streamMode = gl.STREAM_DRAW
+    if("drawMode" in options) drawMode = options.drawMode
+
+    var elements = options.elements || 0
+    var attributeValues = {}
+    var dirty = true
+
+    var initElements = (elem) => {
+        for(var key in mat["attributes"]) {
+            var atr = mat["attributes"][key]
+            attributeValues[key] = {
+                "vals": new Float32Array(elem*typeDim(atr.type)),
+                "dirty": true
+            }
+        }
+
+        elements = elem
+    }
+    initElements(elements)
+
+    var verify = (key) => {
+        if(!(key in attributeValues)) {
+            console.log("Key " + key + " not in attributes")
+            return false
+        }
+        return true
+    }
+
+    var obj = {}
+
+    obj.initElements = initElements;
+
+    obj.getArray = (key) =>  {
+        if(!verify(key)) return
+        return attributeValues[key]["vals"]
+    }
+
+    obj.setArray = (key, val) =>  {
+        if(!verify(key)) return
+        attributeValues[key]["vals"] = val
+    }
+
+    obj.setValues = (key, i, vals) =>  {
+        if(!verify(key)) return
+        for(let j = 0; j < vals.length; j++) {
+            attributeValues[key]["vals"][i*vals.length + j] = vals[j]
+        }
+        attributeValues[key]["dirty"] = true
+    }
+
+    obj.getValue = (key, i) => {
+        if(!verify(key)) return
+        return attributeValues[key]["vals"][i]
+    }
+    obj.setValue = (key, i, val) => {
+        if(!verify(key)) return
+        attributeValues[key]["vals"][i] = val
+        attributeValues[key]["dirty"] = true
+    }
+
+    obj.mat = mat
+
+    obj.draw = (modelview, projection, normalMatrix, _dirty = false) => {
+        if(currentMat != mat.name) {
+
+            // console.log("Current mat " + currentMat)
+            // console.log("My mat " + mat.name)
+            mat.loadProgram()
+            // initMaterial(mat.name)
+            dirty = true
+
+            for(var key in attributeValues) {
+                attributeValues[key]["dirty"] = true
+            }
+        }
+
+        mat.setUniform("modelview", modelview)
+        mat.setUniform("projection", projection)
+        mat.setUniform("normalMatrix", normalMatrix)
+
+        dirty = dirty || _dirty
+
+        if(dirty) {
+            for(var key in attributeValues) {
+                if(attributeValues[key]["dirty"] == true) {
+                    if(key != 'indices') {
+                        mat.setAttribute(key, attributeValues[key]["vals"], {mode:streamMode})
+                    } else {
+                        mat.setIndices(attributeValues["indices"]["vals"])
+                    }
+
+                    attributeValues[key]["dirty"] = false
+                }
+            }
+
+            for(var key in mat["uniforms"]) {
+                // console.log("Setting uniform " + key +"  from draw")
+                mat.setUniform(key, mat["uniforms"][key]["vals"], false)
+            }
+
+            dirty = false
+        }
+
+        // Draw the triangles.
+        switch(drawMethod) {
+            case "arrays":
+                // console.log("Drawing array for " + elements + " ements" )
+                gl.drawArrays(drawMode, 0, elements); 
+            break
+            case "elements":
+                // console.log("Drawing elements for " + elements + " elements")
+                gl.drawElements(drawMode, elements, gl.UNSIGNED_SHORT, 0);  
+            break
+        }
+    }
+
+    obj.dirtyAttributes = () => {
+        for(var key in attributeValues)
+            attributeValues[key]["dirty"] = true
+
+        dirty = true
+    }
+
+    obj.dirtyUniforms = () => { 
+        dirty = true 
+    }
+
+    obj.updateAttribute = (key) => {
+        if(key in mat["attributes"])
+            mat.setAttribute(key, attributeValues[key],{mode:streamMode})
+    }
+
+    obj.setModel = (modelData) => {
+        attributeValues["coords"]["vals"] = modelData.vertexPositions
+        if("texcoord" in mat["attributes"])
+            attributeValues["texcoord"]["vals"] = modelData.vertexTextureCoords
+        if("normal" in mat["attributes"])
+            attributeValues["normal"]["vals"] = modelData.vertexNormals
+        attributeValues["indices"] = {
+            "vals": modelData.indices,
+            "dirty": true
+        }
+        mat.setIndices(attributeValues["indices"]["vals"])
+
+        elements = attributeValues["indices"]["vals"].length
+        streamMode = gl.STATIC_DRAW
+        drawMethod = "elements"
+    }
+
+    if("modelName" in options)
+        obj.setModel(defaultObjects[options["modelName"]])
+
+    if("model" in options) {
+        obj.setModel(options["model"])
+    }
+
+    // console.log("CREATING OBJECT")
+    // console.log(obj)
+
+    return obj
+}</script>
+<script>var projection = mat4.create()  // projection matrix
+var modelview = mat4.create()   // modelview matrix; value comes from rotator
+var normalMatrix = mat3.create()    // matrix, derived from modelview matrix, for transforming normal vectors
 
 var scale = 1
 var dt = 1000/60
 var time = 0
-var resetTimeout
+var loopTimeout
 
 var fieldSize = 100000
-
-var clearVal = 0
-
 var seeds 
 var freqMin = 0.1 
 var freqMax = 4
 var sizeMin = 0.1
-var sizeMax = 2
+var sizeMax = 1.5
 var frequencies = []
 
 var sampleColors = [
@@ -1695,62 +2202,54 @@ var sampleColors = [
     0.827, 0.69, 0.384, 
     0.592, 0.701, 0.773]
 
-var texture
 var framebuffer
 
-//'5976a6', 'c2975a', '3c2d2a', '1c1c24', 'd0cee5', 'd3b062', '97b3c5']
+var numBodies = 1
+var bodies = []
+var G = 0.0001
+var bodyMat
+var bodyMesh
 
-function installModel(modelData) {
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_coords_loc);
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_normal_loc);
-     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
-     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
-}
+var field = null
+var orb = null
+var testCube = null
+var skybox = null
+var skyboxCubemap; // The static cubemap texture for the skybox, loaded in loadTextureCube()
 
-function installModelWithTexture(modelData) {
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexPositions, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_coords_loc);
+// Skybox variables 
+var inverseViewTransform = mat3.create();  // The inverse of the view transform rotation matrix, used in skybox shader program.
 
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_texcoord_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexTextureCoords, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_texcoord_loc, 2, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_texcoord_loc);
+var textureSize = 512
+var reflectionCubemap; // The cubemap texture for the teapot, created dynamically.
+var cubemapTargets; // For convenience, an array containing the six constants, such as
+                    // gl.TEXTURE_CUBE_MAP_POSITIVE_X, that represent the faces of a cubemap texture.
+                    // Created in initGL().
+var fieldTexture;
 
-     gl.bindBuffer(gl.ARRAY_BUFFER, a_normal_buffer);
-     gl.bufferData(gl.ARRAY_BUFFER, modelData.vertexNormals, gl.STATIC_DRAW);
-     gl.vertexAttribPointer(a_normal_loc, 3, gl.FLOAT, false, 0, 0);
-     gl.enableVertexAttribArray(a_normal_loc);
+/* Initialize the WebGL context.  Called from init() */
+function init() {
+    glInit(() => {
 
-     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,index_buffer);
-     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
-}
+        rotator = new TrackballRotator(canvas, draw, 15)
+        zoomer = new Zoomer(canvas) 
 
-function loop() {
-    draw()
+        cubemapTargets = [
+           gl.TEXTURE_CUBE_MAP_POSITIVE_X, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 
+           gl.TEXTURE_CUBE_MAP_POSITIVE_Y, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 
+           gl.TEXTURE_CUBE_MAP_POSITIVE_Z, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z 
+        ];
+ 
+        reset()
+    })
 
-    // setTimeout(loop, dt)
-
-    time += dt
+    document.body.onkeyup = function(e){
+        if(e.keyCode == 32){
+            reset()
+        }
+    }   
 }
 
 function reset() {
-    console.log("RESET")
-
-    rotator = new TrackballRotator(canvas, draw, 15)
-    zoomer = new Zoomer(canvas)
-
-    // if(resetTimeout)
-        // clearTimeout(resetTimeout)
-    // resetTimeout = setTimeout(reset, 1000)
-
     frequencies = [
         lerp(freqMin, freqMax, Math.random()),
         lerp(freqMin, freqMax, Math.random()),
@@ -1759,62 +2258,296 @@ function reset() {
 
     seeds = [Math.random(), Math.random(), Math.random(), Math.random()]
 
-    /* Start draw field */
-    texture = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 
-    	0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+    modelview = mat4.create()
+
+    bodyMat = initMaterial("unlitUniformColor", {
+        "color": [1,1,1,1]
+    }) 
+
+    bodyMesh = initObject({
+        mat:bodyMat,
+        model:uvSphere(1)
+    })
+
+    bodies = []
+
+    // Test bodies
+    numBodies = 10
+    for(let i = 0; i < numBodies; i++) {
+        // Test cube
+        // var color = defaultColors[Math.floor(Math.random()*defaultColors.length)]
+        // color.push(1)
+        var color = [1, lerp(0.8, 1, Math.random()), lerp(0, 1, Math.random()), 1]
+
+        // Pick random distance
+        var distance = lerp(25, 60, Math.random())
+        var scale = 0.1 + Math.random()*2
+
+        // Random orientation
+        var rotY = Math.random()*Math.PI/4
+        var rotX = Math.random()*Math.PI/4
+
+        // Pick random rotation
+        var rot = Math.random()*2*Math.PI
+
+        var position = vec3.fromValues(Math.cos(rot)*distance, 0, Math.sin(rot)*distance)
+        var speed = Math.sqrt(G/distance)
+        // var velocity = vec3.fromValues(0,0,0)
+        var velocity = vec3.create()
+        vec3.cross(velocity, position, vec3.fromValues(0, 1, 0)) 
+        vec3.normalize(velocity, velocity)
+        vec3.scale(velocity, velocity, speed)
 
 
-    gl.viewport(0,0,512, 512)
+        bodies.push({
+            position:position,
+            velocity:velocity,
+            scale:scale,
+            color:color,
+            rotY:rotY,
+            rotX:rotX
+        })
 
-    framebuffer = gl.createFramebuffer()
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+    }
 
-    initPoint()
-    generateField()
-    drawField()
+    // Test cube
+    /*var color = defaultColors[0]
+    color.push(1)
+    color = [0.4, 0.4, 0.4, 0.4]
+    var mat = initMaterial("unlitUniformColor", {
+        "color": color
+    })
+    testCube = initObject({
+        mat:mat,
+        model:cube(1)
+    })*/
 
-    gl.generateMipmap(gl.TEXTURE_2D);
+    /** Start by creating the cube map **/
+    createCubemapAndSkybox();  
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    gl.viewport(0,0,canvas.width, canvas.height)
+    // Create our center object
+    orb = initObject({
+        shader:"cubemapReflection",
+        model:uvSphere(5, 128, 128)
+    })
 
-    // drawField()
+    if(loopTimeout != null)
+        clearTimeout(loopTimeout)
+    loop()
+}
 
-    // Draw cube now
-    initBasicTexture()
-    installModelWithTexture(objects[0])
-    currentModelNumber = 0
+function loop() {
+    renderCubemap()
+
+    var dv = vec3.create()
+    var dx = vec3.create()
+    var normalPos = vec3.create()
+    for(let i = 0; i < bodies.length; i++) {
+        // Acceleration of body
+        var body = bodies[i]
+        var distance = vec3.len(body.position)
+        vec3.normalize(normalPos, body.position)
+
+        vec3.scale(dv, normalPos, -dt*G/Math.pow(distance, 2))
+
+        vec3.add(body.velocity, body.velocity, dv)
+        vec3.scale(dx, body.velocity, dt)
+        vec3.add(body.position, body.position, dx)
+    }
 
     draw()
-    /* End draw field */
 
-    /* Start test texture *
-    var texture = gl.createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,255,255]))
+    loopTimeout = setTimeout(loop, dt)
 
-    var image = new Image();
-    image.src = './space.jpg'
-    image.addEventListener('load', function() {
-        console.log("LOADED!")
-        console.log(image)
-        // Now that the image has loaded make copy it to the texture.
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-
-        // Draw cube now
-        initBasicTexture()
-        installModelWithTexture(objects[0])
-        currentModelNumber = 0
-
-        draw()
-    });
-    /* End Test Texture */
+    time += dt
 }
+
+function draw() { 
+    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); 
+    gl.enable(gl.DEPTH_TEST) 
+
+    // Draw perspective object
+    mat4.perspective(projection, Math.PI/3, 1, 10, 400);
+    if(zoomer) {
+        var zoom = zoomer.getZoomScale()
+        // console.log(zoom)
+        rotator.setViewDistance(lerp(15, 75, (1-clamp(zoom, 0, 1))))
+        // mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+    }
+
+    modelview = rotator.getViewMatrix();
+    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
+    mat3.normalFromMat4(normalMatrix, modelview);
+
+    drawSkyboxAndRest()
+
+    if(orb) {
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap)
+
+        mat3.fromMat4(inverseViewTransform, modelview);
+        mat3.invert(inverseViewTransform,inverseViewTransform);
+        // console.log("Setting inverseViewTransform for orb")
+        orb.mat.setUniform("inverseViewTransform", inverseViewTransform)
+
+        orb.draw(modelview, projection, normalMatrix)
+    }
+
+    /*if(cube) {
+        gl.bindTexture(gl.TEXTURE_2D, fieldTexture);    
+        cube.draw(modelview, projection, normalMatrix)
+    }*/
+    //orb.draw()
+}
+
+function drawSkyboxAndRest() {
+    skybox.mat.loadProgram()
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap);    
+    if(skybox) {
+        pushTransform(modelview)
+        mat4.rotateY(modelview, modelview, Math.PI/4)
+        skybox.draw(modelview, projection, normalMatrix)
+        popTransform(modelview)
+    }
+
+    // Spheres
+    for(let i = 0; i < bodies.length; i++) {
+        pushTransform(modelview)
+        var s = bodies[i].scale
+
+        mat4.rotateX(modelview, modelview, bodies[i].rotX)
+        mat4.rotateY(modelview, modelview, bodies[i].rotY)
+        mat4.translate(modelview, modelview, bodies[i].position)
+        mat4.scale(modelview, modelview, vec3.fromValues(s,s,s))
+        bodyMesh.mat.setUniform("color", bodies[i].color)
+        bodyMesh.draw(modelview, projection)
+
+        popTransform(modelview)
+    }
+}
+
+function createCubemapAndSkybox() {
+    framebuffer = gl.createFramebuffer()
+
+    field = initObject({
+        shader:"unlitPoint",
+        elements:fieldSize,
+        drawMode: gl.POINTS
+    })
+    // field.draw = () => {}
+    generateField()
+
+    // Setup skybox with field texture
+    skybox = initObject({
+        shader:"skybox",
+        model: cube(400)
+    })
+
+
+    renderSkybox()
+
+    // Render cubemap
+
+    // Using our skybox with the newly rendered field texture, render a cubemap from a camera at the center
+    renderCubemap()
+}
+
+function renderSkybox() {
+    // Setup
+    skyboxCubemap = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap); 
+    for(i = 0; i < 6; i++) {
+        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    } 
+
+    gl.viewport(0,0,textureSize, textureSize)
+    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 400);
+
+    mat4.identity(modelview)
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer);
+
+    for (var j = 0; j < 6; j++) {
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubemapTargets[j], skyboxCubemap, 0)
+        gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
+        // console.log("CLEAR COLOR")
+        // console.log(defaultColors[j])
+        // console.log(cubemapTargets[j])
+        // gl.clearColor(defaultColors[j][0], defaultColors[j][1], defaultColors[j][2], 1)
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+        field.draw(modelview, projection, null, true) 
+    }
+
+    // Finalize
+    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxCubemap);
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP); 
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null)
+
+
+    // Reset
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null) 
+    gl.viewport(0,0, canvas.width, canvas.height)
+}
+
+function renderCubemap() {
+    // Setup
+    reflectionCubemap = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap); 
+    for (i = 0; i < 6; i++) {
+        gl.texImage2D(cubemapTargets[i], 0, gl.RGBA, textureSize, textureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            //With null as the last parameter, the previous function allocates memory for the texture and fills it with zeros.
+    }  
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+
+    gl.viewport(0,0,textureSize, textureSize)
+    mat4.perspective(projection, Math.PI/2, 1, 1, 400);  // Set projection to give 90-degree field of view.
+
+    // Render into each of the cubemaps
+    mat4.identity(modelview);
+    mat4.scale(modelview,modelview,[-1,-1,1]);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+
+    mat4.identity(modelview);
+    mat4.scale(modelview,modelview,[-1,-1,1]);
+    mat4.rotateY(modelview,modelview,Math.PI/2);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+
+    mat4.identity(modelview);
+    mat4.scale(modelview,modelview,[-1,-1,1]);
+    mat4.rotateY(modelview,modelview,Math.PI);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+
+    mat4.identity(modelview);
+    mat4.scale(modelview,modelview,[-1,-1,1]);
+    mat4.rotateY(modelview,modelview,-Math.PI/2);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+    
+    mat4.identity(modelview);
+    mat4.rotateX(modelview,modelview,Math.PI/2);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+    
+    mat4.identity(modelview);
+    mat4.rotateX(modelview,modelview,-Math.PI/2);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, reflectionCubemap, 0);
+    drawSkyboxAndRest()
+
+    // Finalize
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, reflectionCubemap);
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+
+    // Reset
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null) 
+    gl.viewport(0,0, canvas.width, canvas.height)
+}
+
 
 function getNoise(x, y, i) {
     noise.seed(seeds[i])
@@ -1829,16 +2562,12 @@ function generateField() {
         // Add random point to canvas
         var randX =  Math.random()
         var randY =  Math.random()
-        var randZ = 0
+        var randZ = -4
 
         var vec = vec3.fromValues(randX, randY, randZ)
         points.push(vec)
     }
 
-    // Create points
-    coords = new Float32Array(fieldSize*3)
-    colors = new Float32Array(fieldSize*3)
-    sizes = new Float32Array(fieldSize)
 
     // Update coords from points
     var s = 0
@@ -1934,255 +2663,27 @@ function generateField() {
             b = Math.random()*/
         }
 
-        coords[i*3 + 0] = -1 + 2*points[i][0]
-        coords[i*3 + 1] = -1 + 2*points[i][1]
-        coords[i*3 + 2] = -1 + 2*points[i][2]
+        field.setValue("coords", i*3 + 0, -1 + 2*points[i][0])
+        field.setValue("coords", i*3 + 1, -1 + 2*points[i][1])
+        field.setValue("coords", i*3 + 2, 2*points[i][2])
 
+        field.setValue("color", i*3 + 0, Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1))
+        field.setValue("color", i*3 + 1, Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1))
+        field.setValue("color", i*3 + 2, Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1))
 
-        colors[i*3 + 0] = Math.min(clearVal + lerp(r, r2, f3)*(1-clearVal), 1)
-        colors[i*3 + 1] = Math.min(clearVal + lerp(g, g2, f3)*(1-clearVal), 1)
-        colors[i*3 + 2] = Math.min(clearVal + lerp(b, b2, f3)*(1-clearVal), 1)
-
-        sizes[i] = s
+        field.setValue("size", i, s)
+        // field.setValue("color", i*3 + 0, 1)
+        // field.setValue("color", i*3 + 1, 1)
+        // field.setValue("color", i*3 + 2, 1)
+        // field.setValue("size", i, 1)
     }
+
+    field.dirtyAttributes()
 
     //console.log("Min: " + min + " Max: " + max)
-}
-
-function drawField() {
-    gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // mat4.perspective(projection, Math.PI/5, 1, 10, 20);
-    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
-    modelview = mat4.create()//rotator.getViewMatrix();
-
-    // Uniforms
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection ); 
-
-    drawPoints();
-}
-
-function draw(clear = true) { 
-    // Multi Triangle
-    if(clear) {
-        gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    }
-
-    mat4.perspective(projection, Math.PI/5, 1, 10, 20);
-    modelview = rotator.getViewMatrix();
-
-    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
-    if(zoomer) {
-	    var zoom = zoomer.getZoomScale()
-	    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
-	}
-
-    // Uniforms
-    gl.uniformMatrix4fv(u_modelview, false, modelview );
-    gl.uniformMatrix4fv(u_projection, false, projection ); 
-
-    drawModel()
-}
-
-function drawModel() {
-    mat3.normalFromMat4(normalMatrix, modelview);
-    gl.uniformMatrix3fv(u_normalMatrix, false, normalMatrix);
-    gl.uniform4fv(u_lightPosition, lightPositions[0]); 
-    
-    gl.drawElements(gl.TRIANGLES, objects[currentModelNumber].indices.length, gl.UNSIGNED_SHORT, 0); 
-}
-
-function drawTris() {
-
-    // Set up values for the "coords" attribute 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STREAM_DRAW);
-    gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_coords_loc); 
-   
-    // Set up values for the "color" attribute 
-    if(a_color_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
-
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
-
-    // Draw the triangles. 
-    gl.drawArrays(gl.TRIANGLES, 0, points.length*3);
-}
-
-function drawPoints() {
-
-    // Set up values for the "coords" attribute 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STREAM_DRAW);
-    gl.vertexAttribPointer(a_coords_loc, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_coords_loc); 
-   
-    // Set up values for the "color" attribute
-    if(a_color_loc != -1) { 
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_color_loc); 
-    }
-
-    if(a_size_loc != -1) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, a_size_buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(a_size_loc, 1, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_size_loc); 
-    }
-
-    // Draw the triangles. 
-    gl.drawArrays(gl.POINTS, 0, points.length); 
-}
-
-
-function initBasic() {
-    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-    u_shift = gl.getUniformLocation(prog, "shift")
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-function initBasicTexture() {
-    var prog = createProgram(gl,"basicTexture-vshader-source","basicTexture-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords")
-    a_coords_buffer = gl.createBuffer()
-    a_texcoord_loc = gl.getAttribLocation(prog, "a_texcoord")
-    a_texcoord_buffer = gl.createBuffer()
-    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
-    a_normal_buffer = gl.createBuffer(); 
-    console.log("NORMALSo")
-    console.log(a_normal_loc)
-
-    index_buffer = gl.createBuffer()
-
-    u_modelview = gl.getUniformLocation(prog, "modelview")
-    u_projection = gl.getUniformLocation(prog, "projection")
-    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
-    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-function initPhong() {
-    var prog = createProgram(gl,"phong-vshader-source","phong-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_normal_loc =  gl.getAttribLocation(prog, "a_normal");
-    a_normal_buffer = gl.createBuffer();
-    a_size_loc = -1
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");
-    u_normalMatrix =  gl.getUniformLocation(prog, "normalMatrix");
-    u_lightPosition=  gl.getUniformLocation(prog, "lightPosition");
-    u_diffuseColor =  gl.getUniformLocation(prog, "diffuseColor");
-    u_specularColor =  gl.getUniformLocation(prog, "specularColor");
-    u_specularExponent = gl.getUniformLocation(prog, "specularExponent");
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.uniform3f(u_specularColor, 0.5, 0.5, 0.5);
-    gl.uniform4f(u_diffuseColor, 1, 1, 1, 1);
-    gl.uniform1f(u_specularExponent, 10);
-    gl.uniform4f(u_lightPosition, 0, 0, 0, 1);	
-}
-
-function initPoint() {
-    var prog = createProgram(gl,"point-vshader-source","point-fshader-source");
-    gl.useProgram(prog);
-
-    a_coords_loc =  gl.getAttribLocation(prog, "a_coords");
-    a_coords_buffer = gl.createBuffer();
-    a_color_loc =  gl.getAttribLocation(prog, "a_color");
-    a_color_buffer = gl.createBuffer();
-    a_size_loc =  gl.getAttribLocation(prog, "a_size"); 
-    a_size_buffer = gl.createBuffer(); 
-
-    /*console.log("Coords: " + a_coords_loc)
-    console.log("Colors: " + a_color_loc)
-    console.log("Size: " + a_size_loc)*/
-
-    index_buffer = gl.createBuffer();
-
-    u_modelview = gl.getUniformLocation(prog, "modelview");
-    u_projection = gl.getUniformLocation(prog, "projection");    
-
-    gl.enable(gl.DEPTH_TEST);
-}
-
-/* Initialize the WebGL context.  Called from init() */
-function init() {
-    console.log("Init")
-    glInit((_canvas) => {
-    	canvas = _canvas
-        reset()
-    })
-
-    document.body.onkeyup = function(e){
-        if(e.keyCode == 32){
-            reset()
-        }
-    }   
 }</script>
 
 <style>
-	body {
-		background-color:black;
-	}
-	.slidecontainer {
-	  width: 100%; /* Width of the outside container */
-	}
-
-	/* The slider itself */
-	.slider {
-	  -webkit-appearance: none;  /* Override default CSS styles */
-	  appearance: none;
-	  width: 50%; /* Full-width */
-	  height: 15px; /* Specified height */
-	  background: #d3d3d3; /* Grey background */
-	  outline: none; /* Remove outline */
-	  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
-	  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
-	  transition: opacity .2s;
-	}
-
-	/* Mouse-over effects */
-	.slider:hover {
-	  opacity: 1; 
-	}
 </style>
 </head>
 
@@ -2191,23 +2692,10 @@ function init() {
 <div style="display:flex">
 	<div id="canvas-holder">
 	   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
-		<!--<div class="slidecontainer">
-			Field Size 
-			<input type="range" min="10" max="1000000" value="10" class="slider" id="fieldSize">
-		</div>
-
-		<div class="slidecontainer">
-			Freq Min
-			<input type="range" min="0.1" max="10" value="0.1" class="slider" id="freqMin">
-		</div>	
-		<div class="slidecontainer">
-			Freq Max
-			<input type="range" min="1" max="10" value="1" class="slider" id="freqMax">
-		</div>-->
 	</div>
-	<div>
-		<!-- <img src="space.jpg" style="width:800px;height:800px"></img> -->
-	</div>
+	<!-- <div>
+		<img src="space.jpg" style="width:800px;height:800px"></img>
+	</div> -->
 </div>
 <div>
 </div>

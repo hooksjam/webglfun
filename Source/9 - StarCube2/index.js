@@ -67,7 +67,7 @@ function reset() {
     gl.viewport(0,0, canvas.width, canvas.height)
     /* Create Objects */
     field = initObject({
-        name:"unlitPoint",
+        shader:"unlitPoint",
         elements:fieldSize,
         drawMode: gl.POINTS
     })
@@ -84,7 +84,7 @@ function reset() {
 
     cube = initObject({
         mat:mat,
-        model:"cube"
+        modelName:"cube"
     })
 
     /* Start draw field */

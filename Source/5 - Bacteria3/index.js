@@ -268,7 +268,7 @@ function draw() {
 /* Initialize the WebGL context.  Called from init() */
 function init() {
 	console.log("Init")
-	glInit((canvas) => {
+	glInit(() => {
 	    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
 	    gl.useProgram(prog);
 	    gl.enable(gl.DEPTH_TEST);

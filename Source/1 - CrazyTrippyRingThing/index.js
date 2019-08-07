@@ -171,11 +171,12 @@ function draw() {
     gl.clearColor(0.2,0.2,0.2,1);  // specify the color to be used for clearing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    mat4.perspective(projection,Math.PI/5,1,10,20);
-    modelview = rotator.getViewMatrix();
+    mat4.perspective(projection,Math.PI/5,1,5,50);
 
     var zoom = zoomer.getZoomScale()
-    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+    rotator.setViewDistance(lerp(5, 40, 1-zoom))
+
+    modelview = rotator.getViewMatrix();
 
     // Uniforms
     gl.uniformMatrix4fv(u_modelview, false, modelview );
@@ -379,7 +380,7 @@ function init() {
     //installModel(objects[1]);
     currentModelNumber = 1;
     rotator = new TrackballRotator(canvas, draw, 15);
-    zoomer = new Zoomer(canvas)
+    zoomer = new Zoomer(canvas, 0.7)
 
     var count = ringCount
 

@@ -12,6 +12,109 @@
     }
 </style>
 
+<script type="x-shader/x-vertex" id="phong-vshader-source">
+    attribute vec3 a_coords;
+    attribute vec3 a_normal;
+    uniform mat4 modelview;
+    uniform mat4 projection;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    void main() {
+        vec4 coords = vec4(a_coords,1.0);
+        vec4 eyeCoords = modelview * coords;
+        gl_Position = projection * eyeCoords;
+        v_normal = normalize(a_normal);
+        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird)
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="phong-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+    uniform mat3 normalMatrix;
+    uniform vec4 lightPosition;
+    uniform vec4 diffuseColor;
+    uniform vec3 specularColor;
+    uniform float specularExponent;
+    varying vec3 v_normal;
+    varying vec3 v_eyeCoords;
+    void main() {
+        vec3 N, L, R, V;  // vectors for lighting equation
+        N = normalize( normalMatrix*v_normal );
+        if ( lightPosition.w == 0.0 ) {
+            L = normalize( lightPosition.xyz );
+        }
+        else {
+            L = normalize( lightPosition.xyz/lightPosition.w - v_eyeCoords );
+        }
+        R = -reflect(L,N);
+        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
+        if ( dot(L,N) <= 0.0 ) {
+            gl_FragColor = vec4(0,0,0,1);
+        }
+        else {
+            vec3 color = 0.8*dot(L,N) * diffuseColor.rgb;
+            if (dot(R,V) > 0.0) {
+                color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
+            }
+            gl_FragColor = vec4(color, diffuseColor.a);
+        }
+    }
+</script>
+
+<script type="x-shader/x-vertex" id="basic-vshader-source">
+  attribute vec3 a_normal;
+  attribute vec3 a_coords;
+  attribute vec3 a_color;
+  varying vec3 v_color;
+  uniform mat4 modelview;
+  uniform mat4 projection; 
+  uniform float shift;
+  void main() {
+    gl_PointSize = 1.0 + shift; 
+    vec4 coords = vec4(a_coords, 1.0);
+    coords = coords + vec4(a_normal, 1.0)*shift;
+    vec4 eyeCoords = modelview * coords;
+    gl_Position = projection * eyeCoords;
+    //gl_Position = vec4(a_coords, 0.0, 1.0);
+    v_color = a_color;
+
+  } 
+</script>
+
+<script type="x-shader/x-fragment" id="basic-fshader-source">
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+  #else
+    precision mediump float;
+  #endif
+  varying vec3 v_color;
+  void main() {
+    gl_FragColor = vec4(v_color, 1.0);
+  }     
+</script>
+
+<script>function shuffle(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+function lerp(a, b, f) {
+    return a + f * (b - a)
+}
+
+function clamp(v, min, max) {
+    return Math.max(Math.min(v, max), min)
+}</script>
 <script>/**
  * @fileoverview gl-matrix - High performance matrix and vector operations
  * @author Brandon Jones
@@ -350,6 +453,39 @@ function cube(side) {
    face( [-s,-s,-s, s,-s,-s, s,-s,s, -s,-s,s], [0,-1,0] );
    face( [s,-s,-s, s,s,-s, s,s,s, s,-s,s], [1,0,0] );
    face( [-s,-s,-s, -s,-s,s, -s,s,s, -s,s,-s], [-1,0,0] );
+   return {
+      vertexPositions: new Float32Array(coords),
+      vertexNormals: new Float32Array(normals),
+      vertexTextureCoords: new Float32Array(texCoords),
+      indices: new Uint16Array(indices)
+   }
+}
+
+ /**
+  * Create a model of a cube, centered at the origin.  (This is not
+  * a particularly good format for a cube, since an IFS representation
+  * has a lot of redundancy.)
+  * @side the length of a side of the cube.  If not given, the value will be 1.
+  */
+function plane(side) {
+   var s = (side || 1)/2;
+   var coords = [];
+   var normals = [];
+   var texCoords = [];
+   var indices = [];
+   function face(xyz, nrm) {
+      var start = coords.length/3;
+      var i;
+      for (i = 0; i < 12; i++) {
+         coords.push(xyz[i]);
+      }
+      for (i = 0; i < 4; i++) {
+         normals.push(nrm[0],nrm[1],nrm[2]);
+      }
+      texCoords.push(0,0,1,0,1,1,0,1);
+      indices.push(start,start+1,start+2,start,start+2,start+3);
+   }
+   face( [-s,0,-s, -s,0,s, s,0,s, s,0,-s], [0,1,0] );
    return {
       vertexPositions: new Float32Array(coords),
       vertexNormals: new Float32Array(normals),
@@ -830,25 +966,163 @@ function uvCone(radius, height, slices, noBottom) {
 </script>
 <script>"use strict";
 
-var shaders = {}
+var shaders = {
+    "unlitPoint": {
+        source: "unlitPoint.c",
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3",
+            "size":"float"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        },
+        indices: false
+    },
 
-var gl;   // The webgl context.
+    "unlitColor": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        }
+    },
 
-var transformStack = []
+    "unlitUniformColor": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "color":"vec3"
+        }
+    },
 
-function pushTransform(tran) {
-    transformStack.push(tran)
+    "unlitTexture": {
+        source: "unitTexture.c",
+        attributes: {
+            "coords":"vec3", 
+            "color":"vec3",
+            "texcoord":"vec2"
+        }, 
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4"
+        }
+    },
+
+    "lambertColor": {
+
+    },
+
+    "lambertTexture": {
+
+    },
+
+    "phongColor": {
+        source: "phongColor.c",
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "specularColor":"vec3",
+            "specularExponent":"float"
+        }
+    },
+    "phongTexture": {
+        source: "phongTexture.c",
+
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3",
+            "texcoord":"vec2"
+        }, 
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "specularColor":"vec3",
+            "specularExponent":"float"
+        }  
+    },
+
+    "skybox": {
+        source: "skybox.c",
+        attributes: {
+            "coords": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "skybox":"samplerCube",
+        }
+    },
+
+    "cubemapReflection": {
+        source: "cubemapReflection.c",
+        attributes: {
+            "coords": "vec3",
+            "normal": "vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "inverseViewTransform":"mat3",
+            "skybox":"samplerCube"
+        }
+    } 
 }
 
-function popTransform() {
-    return transformStack.pop()
+var materials = {}
+var currentMat
+var gl   // The webgl context.
+var canvas
+var transformStack = []
+
+var clearVal = 0
+
+var defaultObjects = {  // Objects for display, selected by popup menu
+    "cube": cube(5),
+    "uvTorus": uvTorus(3,1,64,32),
+    "uvCylinder": uvCylinder(1.5,5.5),
+    "uvCone": uvCone(2.5,5.5),
+    "uvSphere": uvSphere(3),
+    "uvSphere2": uvSphere(3,12,6)
+}
+var defaultColors = [[1,1,1], [1,0,0], [0,1,0], [0,0,1], [0,1,1], [1,0,1], [1,1,0], [0,0,0], [0.5,0.5,0.5]]
+var defaultLights = [[0,0,0,1], [0,0,1,0], [0,1,0,0], [0,0,-10,1], [2,3,5,0]]
+
+var rotator  
+var zoomer
+
+function pushTransform(tran) {
+    transformStack.push(mat4.clone(tran))
+}
+
+function popTransform(tran) {
+    return mat4.copy(tran, transformStack.pop())
 }
 /**
  * initialization function that will be called when the page has loaded
  */
 function glInit(callback) {
     try {
-        var canvas = document.getElementById("webglcanvas");
+        canvas = document.getElementById("webglcanvas");
         gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if ( ! gl ) {
             throw "Browser does not support WebGL";
@@ -860,7 +1134,7 @@ function glInit(callback) {
         return;
     }
     try {
-        callback(canvas)
+        callback()
     }
     catch (e) {
         document.getElementById("canvas-holder").innerHTML =
@@ -897,6 +1171,9 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     try {
         var vertexShaderSource = getTextContent( vertexShaderID );
         var fragmentShaderSource = getTextContent( fragmentShaderID );
+        // console.log("PROGRAM")
+        // console.log(vertexShaderSource)
+        // console.log(fragmentShaderSource)
     }
     catch (e) {
         throw "Error: Could not get shader source code from script elements.";
@@ -923,110 +1200,344 @@ function createProgram(gl, vertexShaderID, fragmentShaderID) {
     return prog;
 }
 
-/**
- * Shuffles array in place.
- * @param {Array} a items An array containing the items.
- */
-function shuffle(a) {
-    var j, x, i;
-    for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(Math.random() * (i + 1));
-        x = a[i];
-        a[i] = a[j];
-        a[j] = x;
+function initMaterial(shader, options = {}) {
+    if(!(shader in shaders)) {
+        console.log("Shader '" + shader + "' not defined in base, go there and do it")
+        return
     }
-    return a;
+
+    console.log("INIT")
+    var label = options.name || shader
+    // console.log("INIT MATERIALS " + name)
+
+    // Load shader into script tag?
+
+    if(!(label in materials)) {
+        // Create material
+        var mat = {
+            shader:shader,
+            name:label,
+            attributes:{},
+            uniforms:{}
+        }
+        var prog
+
+        mat.loadProgram = () => {
+            if("prog" in shaders[shader] && shaders[shader]["prog"] != null)
+                prog = shaders[shader]["prog"]
+            else {
+                prog = createProgram(gl, shader + "-vshader-source", shader + "-fshader-source");
+                shaders[shader]["prog"] = prog
+            }
+
+            gl.useProgram(prog); 
+            currentMat = mat.label
+        }
+        mat.loadProgram()
+
+        for(var atr in shaders[shader]["attributes"]) {
+            mat["attributes"][atr] = {
+                "loc": gl.getAttribLocation(prog, "a_"+atr),
+                "buffer": gl.createBuffer(),
+                "type": shaders[shader]["attributes"][atr]
+            }
+        }
+
+        for(var uni in shaders[shader]["uniforms"]) {
+            // console.log("")
+            var loc = gl.getUniformLocation(prog, uni)
+            // console.log("Getting uniform location for " + uni)
+            mat["uniforms"][uni] = {
+                "loc": loc,//gl.getUniformLocation(prog, uni),
+                "type": shaders[shader]["uniforms"][uni]
+            }
+        }
+
+        if(!("indices" in shaders[shader] && !shaders[shader]["indices"])) {
+            mat["indices"] = {
+                "buffer": gl.createBuffer()
+            }
+        }
+
+        mat.setUniform = (uni, vals, write = true) => {
+            if(vals == null)
+                return
+            if(uni in mat["uniforms"]) {
+                var type = mat["uniforms"][uni]["type"]
+                var u_loc = mat["uniforms"][uni]["loc"]
+
+                // console.log("Setting uniform " + uni + " for " + name)
+                // console.log(type)
+
+                switch(type) {
+                    case "float":
+                        gl.uniform1f(u_loc, vals);
+                    break
+                    case "vec2":
+                        gl.uniform2f(u_loc, vals[0], vals[1]); 
+                    break
+                    case "vec3":
+                        gl.uniform3f(u_loc, vals[0], vals[1], vals[2]); 
+                    break
+                    case "vec4":
+                        gl.uniform4f(u_loc, vals[0], vals[1], vals[2], vals[3]); 
+                    break
+                    case "mat3":
+
+                        // console.log("Setting uniform " + uni + " for " + name)
+                        // console.log(type)
+                        // console.log(u_loc)
+                        gl.uniformMatrix3fv(u_loc, false, vals)
+                    break
+                    case "mat4":
+                        gl.uniformMatrix4fv(u_loc, false, vals)
+                    break
+                    case "skybox":
+                    break
+                    default:
+                    break
+                }
+
+                if(write && type != "skybox")
+                    mat["uniforms"][uni]["vals"] = vals
+            }
+        }
+
+        mat.setAttribute = (atr, vals, options = {}) => {
+            if(!(atr in mat["attributes"])) {
+                console.log("Attribute " + atr + " not in material")
+                console.log(mat)
+                return
+            }
+            var mode = gl.STREAM_DRAW
+            if("mode" in options) mode = options.mode
+
+            var dim = typeDim(mat["attributes"][atr]["type"])
+            var loc = mat["attributes"][atr]["loc"]
+            var buffer = mat["attributes"][atr]["buffer"]
+
+            // console.log("Setting attribute " + atr)
+            // console.log(vals)
+            // console.log(dim)
+            // console.log(loc)
+            // console.log(mode)
+            // console.log(gl.STATIC_DRAW)
+            // console.log(buffer)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+            gl.bufferData(gl.ARRAY_BUFFER, vals, mode)
+            gl.vertexAttribPointer(loc, dim, gl.FLOAT, false, 0, 0)
+            gl.enableVertexAttribArray(loc)
+        }
+
+        mat.setIndices = (ind) => {
+            if("indices" in mat) {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mat["indices"]["buffer"]);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ind, gl.STATIC_DRAW);
+            } 
+        }
+        // console.log("INIT MAY")
+        // console.log(mat)
+
+        materials[label] = mat
+    }
+
+    // Set uniforms from options
+    for(var uni in options) {
+        // console.log("Setting uniform " + uni + " from start")
+        materials[label].setUniform(uni, options[uni])
+    }
+
+    // currentMat = label
+    return materials[label]
 }
 
-function lerp(a, b, f) {
-    return a + f * (b - a)
-}</script>
+function typeDim(type) {
+    switch(type) {
+        case "float":
+            return 1
+        case "vec2":
+            return 2
+        case "vec3":
+            return 3
+        case "vec4":
+            return  4
+    } 
+}
 
-<script type="x-shader/x-vertex" id="phong-vshader-source">
-    attribute vec3 a_coords;
-    attribute vec3 a_normal;
-    uniform mat4 modelview;
-    uniform mat4 projection;
-    varying vec3 v_normal;
-    varying vec3 v_eyeCoords;
-    void main() {
-        vec4 coords = vec4(a_coords,1.0);
-        vec4 eyeCoords = modelview * coords;
-        gl_Position = projection * eyeCoords;
-        v_normal = normalize(a_normal);
-        v_eyeCoords = eyeCoords.xyz/eyeCoords.w; // (Note: eyeCoords.w is 1 unless modelview is weird)
+function initObject(options = {}) {
+    console.log("Creating object with options")
+    console.log(options)
+
+    if(!("mat" in options) && !("shader" in options)) {
+        console.log("Must include mat or name in options")
+        return
     }
-</script>
 
-<script type="x-shader/x-fragment" id="phong-fshader-source">
-    #ifdef GL_FRAGMENT_PRECISION_HIGH
-       precision highp float;
-    #else
-       precision mediump float;
-    #endif
-    uniform mat3 normalMatrix;
-    uniform vec4 lightPosition;
-    uniform vec4 diffuseColor;
-    uniform vec3 specularColor;
-    uniform float specularExponent;
-    varying vec3 v_normal;
-    varying vec3 v_eyeCoords;
-    void main() {
-        vec3 N, L, R, V;  // vectors for lighting equation
-        N = normalize( normalMatrix*v_normal );
-        if ( lightPosition.w == 0.0 ) {
-            L = normalize( lightPosition.xyz );
-        }
-        else {
-            L = normalize( lightPosition.xyz/lightPosition.w - v_eyeCoords );
-        }
-        R = -reflect(L,N);
-        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
-        if ( dot(L,N) <= 0.0 ) {
-            gl_FragColor = vec4(0,0,0,1);
-        }
-        else {
-            vec3 color = 0.8*dot(L,N) * diffuseColor.rgb;
-            if (dot(R,V) > 0.0) {
-                color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
+    var mat = options.mat || initMaterial(options.shader)
+    var drawMethod = options.drawMethod || "arrays"
+    var drawMode = gl.TRIANGLES
+    var streamMode = gl.STREAM_DRAW
+    if("drawMode" in options) drawMode = options.drawMode
+
+    var elements = options.elements || 0
+    var attributeValues = {}
+    var dirty = true
+
+    var initElements = (elem) => {
+        for(var key in mat["attributes"]) {
+            var atr = mat["attributes"][key]
+            attributeValues[key] = {
+                "vals": new Float32Array(elem*typeDim(atr.type)),
+                "dirty": true
             }
-            gl_FragColor = vec4(color, diffuseColor.a);
+        }
+
+        elements = elem
+    }
+    initElements(elements)
+
+    var verify = (key) => {
+        if(!(key in attributeValues)) {
+            console.log("Key " + key + " not in attributes")
+            return false
+        }
+        return true
+    }
+
+    var obj = {}
+
+    obj.initElements = initElements;
+
+    obj.getArray = (key) =>  {
+        if(!verify(key)) return
+        return attributeValues[key]["vals"]
+    }
+
+    obj.setArray = (key, val) =>  {
+        if(!verify(key)) return
+        attributeValues[key]["vals"] = val
+    }
+
+    obj.setValues = (key, i, vals) =>  {
+        if(!verify(key)) return
+        for(let j = 0; j < vals.length; j++) {
+            attributeValues[key]["vals"][i*vals.length + j] = vals[j]
+        }
+        attributeValues[key]["dirty"] = true
+    }
+
+    obj.getValue = (key, i) => {
+        if(!verify(key)) return
+        return attributeValues[key]["vals"][i]
+    }
+    obj.setValue = (key, i, val) => {
+        if(!verify(key)) return
+        attributeValues[key]["vals"][i] = val
+        attributeValues[key]["dirty"] = true
+    }
+
+    obj.mat = mat
+
+    obj.draw = (modelview, projection, normalMatrix, _dirty = false) => {
+        if(currentMat != mat.name) {
+
+            // console.log("Current mat " + currentMat)
+            // console.log("My mat " + mat.name)
+            mat.loadProgram()
+            // initMaterial(mat.name)
+            dirty = true
+
+            for(var key in attributeValues) {
+                attributeValues[key]["dirty"] = true
+            }
+        }
+
+        mat.setUniform("modelview", modelview)
+        mat.setUniform("projection", projection)
+        mat.setUniform("normalMatrix", normalMatrix)
+
+        dirty = dirty || _dirty
+
+        if(dirty) {
+            for(var key in attributeValues) {
+                if(attributeValues[key]["dirty"] == true) {
+                    if(key != 'indices') {
+                        mat.setAttribute(key, attributeValues[key]["vals"], {mode:streamMode})
+                    } else {
+                        mat.setIndices(attributeValues["indices"]["vals"])
+                    }
+
+                    attributeValues[key]["dirty"] = false
+                }
+            }
+
+            for(var key in mat["uniforms"]) {
+                // console.log("Setting uniform " + key +"  from draw")
+                mat.setUniform(key, mat["uniforms"][key]["vals"], false)
+            }
+
+            dirty = false
+        }
+
+        // Draw the triangles.
+        switch(drawMethod) {
+            case "arrays":
+                // console.log("Drawing array for " + elements + " ements" )
+                gl.drawArrays(drawMode, 0, elements); 
+            break
+            case "elements":
+                // console.log("Drawing elements for " + elements + " elements")
+                gl.drawElements(drawMode, elements, gl.UNSIGNED_SHORT, 0);  
+            break
         }
     }
-</script>
 
-<script type="x-shader/x-vertex" id="basic-vshader-source">
-  attribute vec3 a_normal;
-  attribute vec3 a_coords;
-  attribute vec3 a_color;
-  varying vec3 v_color;
-  uniform mat4 modelview;
-  uniform mat4 projection; 
-  uniform float shift;
-  void main() {
-    gl_PointSize = 1.0 + shift; 
-    vec4 coords = vec4(a_coords, 1.0);
-    coords = coords + vec4(a_normal, 1.0)*shift;
-    vec4 eyeCoords = modelview * coords;
-    gl_Position = projection * eyeCoords;
-    //gl_Position = vec4(a_coords, 0.0, 1.0);
-    v_color = a_color;
+    obj.dirtyAttributes = () => {
+        for(var key in attributeValues)
+            attributeValues[key]["dirty"] = true
 
-  } 
-</script>
+        dirty = true
+    }
 
-<script type="x-shader/x-fragment" id="basic-fshader-source">
-  #ifdef GL_FRAGMENT_PRECISION_HIGH
-    precision highp float;
-  #else
-    precision mediump float;
-  #endif
-  varying vec3 v_color;
-  void main() {
-    gl_FragColor = vec4(v_color, 1.0);
-  }     
-</script>
+    obj.dirtyUniforms = () => { 
+        dirty = true 
+    }
 
+    obj.updateAttribute = (key) => {
+        if(key in mat["attributes"])
+            mat.setAttribute(key, attributeValues[key],{mode:streamMode})
+    }
+
+    obj.setModel = (modelData) => {
+        attributeValues["coords"]["vals"] = modelData.vertexPositions
+        if("texcoord" in mat["attributes"])
+            attributeValues["texcoord"]["vals"] = modelData.vertexTextureCoords
+        if("normal" in mat["attributes"])
+            attributeValues["normal"]["vals"] = modelData.vertexNormals
+        attributeValues["indices"] = {
+            "vals": modelData.indices,
+            "dirty": true
+        }
+        mat.setIndices(attributeValues["indices"]["vals"])
+
+        elements = attributeValues["indices"]["vals"].length
+        streamMode = gl.STATIC_DRAW
+        drawMethod = "elements"
+    }
+
+    if("modelName" in options)
+        obj.setModel(defaultObjects[options["modelName"]])
+
+    if("model" in options) {
+        obj.setModel(options["model"])
+    }
+
+    // console.log("CREATING OBJECT")
+    // console.log(obj)
+
+    return obj
+}</script>
 <script>var a_coords_loc;       // Location of the a_coords attribute variable in the shader program.
 var a_coords_buffer;    // Buffer to hold the values for a_coords.
 var a_normal_loc;       // Location of a_normal attribute.
@@ -1297,7 +1808,7 @@ function draw() {
 /* Initialize the WebGL context.  Called from init() */
 function init() {
 	console.log("Init")
-	glInit((canvas) => {
+	glInit(() => {
 	    var prog = createProgram(gl,"basic-vshader-source","basic-fshader-source");
 	    gl.useProgram(prog);
 	    gl.enable(gl.DEPTH_TEST);

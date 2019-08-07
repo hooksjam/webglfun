@@ -519,8 +519,7 @@ function initPoint() {
 /* Initialize the WebGL context.  Called from init() */
 function init() {
     console.log("Init")
-    glInit((_canvas) => {
-    	canvas = _canvas
+    glInit(() => {
         reset()
     })
 

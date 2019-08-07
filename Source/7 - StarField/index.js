@@ -45,6 +45,8 @@ var dt = 1000/60
 var time = 0
 var resetTimeout
 
+var loopTimeout
+
 var fieldSize = 100000
 
 var clearVal = 0
@@ -83,7 +85,10 @@ function installModel(modelData) {
 function loop() {
     draw()
 
-    // setTimeout(loop, dt)
+    if(loopTimeout != null)
+        clearTimeout(loopTimeout)
+
+    loopTimeout = setTimeout(loop, dt)
 
     time += dt
 }
@@ -245,13 +250,14 @@ function draw() {
     gl.clearColor(clearVal, clearVal, clearVal, 1);  // specify the color to be used for clearing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // mat4.perspective(projection, Math.PI/5, 1, 10, 20);
-    mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
-    modelview = rotator.getViewMatrix();
+    mat4.perspective(projection, Math.PI/5, 1, 0.5, 20);
+    // mat4.ortho(projection, -1.0, 1.0, -1.0, 1.0, 0.1, 100); 
 
-    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
     var zoom = zoomer.getZoomScale()
-    mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
+    rotator.setViewDistance(lerp(0.01, 2, 1-zoom))
+
+    modelview = rotator.getViewMatrix();
+    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
 
     // Uniforms
     gl.uniformMatrix4fv(u_modelview, false, modelview );
@@ -403,13 +409,13 @@ function initPoint(canvas) {
 /* Initialize the WebGL context.  Called from init() */
 function init() {
     console.log("Init")
-    glInit((canvas) => {
+    glInit(() => {
         console.log(canvas)
         initPoint(canvas)
         // initBasic(canvas)
 
         rotator = new TrackballRotator(canvas, draw, 15)
-        zoomer = new Zoomer(canvas)
+        zoomer = new Zoomer(canvas, 0)
 
         /*document.getElementById("freqMin").value = freqMin;
         document.getElementById("freqMax").value = freqMax;
@@ -420,7 +426,7 @@ function init() {
         document.getElementById("fieldSize").onchange = function() { fieldSize = Number(this.value); reset(); }; */
 
         reset()
-        // loop()
+        loop()
     })
 
     document.body.onkeyup = function(e){
