@@ -6,7 +6,7 @@ var scale = 1
 var dt = 1000/60
 var time = 0
 var loopTimeout
-var G = 10 
+var G = 20
 
 var framebuffer
 
@@ -14,16 +14,18 @@ var numBodies = 30
 var balls = []
 var ballMesh
 var ballMat
-var gridSize = 0.2 
+var gridSize = 4 
 var base
 var baseMat
 var baseSize = 8
+
+var dampen = 0.8
 
 /* Initialize the WebGL context.  Called from init() */
 function init() {
     glInit(() => {
 
-        rotator = new TrackballRotator(canvas, draw, 15)
+        rotator = new TrackballRotator(canvas, draw, 20)
         zoomer = new Zoomer(canvas) 
  
         reset()
@@ -47,15 +49,19 @@ function createBall(radius, color, position, velocity) {
 
     var id = balls.length
 
+
     balls.push({
         id:id,
         position:position,
         velocity:velocity,
-        radius:radius
+        radius:radius,
+        color:color
     })
 }
 
 function reset() {
+    clearVal = 1
+
     var color = [0.1, 0.1, 0.1, 1]
 
     // createBall(
@@ -73,23 +79,39 @@ function reset() {
     //     vec3.fromValues(-1,0,0)) 
 
     // Create 3 balls in a vertical line
-    numBodies = 15
-    ballMat = initMaterial("unlitUniformColor", {color: color, name: "ballMat"})
+    ballMat = initMaterial("phongColor", {
+        diffuseColor: color, 
+        specularColor: [1,1,1,1], 
+        specularExponent: 0.5,
+        lightPosition:defaultLights[4], 
+        name: "ballMat"})
     ballMesh = initObject({
         mat:ballMat,
         model:uvSphere(0.5)
     }) 
+
+    bodies = []
+
+    numBodies = 50 
+    var minSize = 0.1
+    var maxSize = 0.5
     for(let i = 0; i < numBodies; i++) {
+        var s = 0.8
+        var r = Math.pow(Math.random(), s)
+        var g = Math.pow(Math.random(), s)
+        var b = Math.pow(Math.random(), s)
+        color = [r,g,b,1]
         createBall(
-            0.5, 
+            // lerp(minSize, maxSize, Math.random()), 
+            0.5,
             color,
             // defaultColors[Math.floor(Math.random()*defaultColors.length)],
-            vec3.fromValues(Math.random()*0.1, 1 + i*1.5, Math.random()*0.1), 
+            vec3.fromValues(Math.random()*0.1, 1 + i*1.3, Math.random()*0.1), 
             vec3.fromValues(0,0,0))
     }
 
     // Plan
-    baseMat = initMaterial("unlitUniformColor", {color: [0.1, 0.1, 0.3, 1], name: "baseMat"})
+    baseMat = initMaterial("unlitUniformColor", {color: [0.5, 0.5, 1, 1], name: "baseMat"})
     base = initObject({
         mat:baseMat,
         model:plane(baseSize)
@@ -122,12 +144,12 @@ function checkCollision(ballA, ballB) {
 
         // Ball a
         vec3.add(ballA.position, ballA.position, difference)
-        vec3.add(ballA.velocity, ballA.velocity, projectUonV(ballA.velocity, difference, -2))
+        vec3.add(ballA.velocity, ballA.velocity, projectUonV(ballA.velocity, difference, -(1 + dampen)))
 
         // Ball b
         vec3.scale(difference, difference, -1)
         vec3.add(ballB.position, ballB.position, difference)
-        vec3.add(ballB.velocity, ballB.velocity, projectUonV(ballB.velocity, difference, -2))
+        vec3.add(ballB.velocity, ballB.velocity, projectUonV(ballB.velocity, difference, -(1 + dampen)))
     }
 }
 
@@ -160,6 +182,7 @@ function loop() {
         vec3.scale(dx, body.velocity, dt/1000)
         vec3.add(body.position, body.position, dx)
 
+        // addIdToZone(balls[i].id, body.position.x, body.position.y, body.position.z)
         // Add to quadrants that the bounding box intersect with
         addIdToZone(balls[i].id, body.position.x-radius, body.position.y-radius, body.position.z-radius)
         addIdToZone(balls[i].id, body.position.x+radius, body.position.y-radius, body.position.z-radius)
@@ -171,19 +194,22 @@ function loop() {
         addIdToZone(balls[i].id, body.position.x+radius, body.position.y+radius, body.position.z+radius)
         addIdToZone(balls[i].id, body.position.x-radius, body.position.y+radius, body.position.z+radius)
 
+        var b = bounds - radius
 
         // Ground collision
-        if(balls[i].velocity[1] < 0 && balls[i].position[1] < -bounds)
+        if(balls[i].velocity[1] < 0 && balls[i].position[1] < -b) {
+            balls[i].position[1] = -bounds + radius
             balls[i].velocity[1] *= -1
+        }
 
         // Check wall collisions - x
-        if((balls[i].velocity[0] < 0 && balls[i].position[0] < -bounds) || 
-            (balls[i].velocity[0] > 0 && balls[i].position[0] > bounds))
+        if((balls[i].velocity[0] < 0 && balls[i].position[0] < -b) || 
+            (balls[i].velocity[0] > 0 && balls[i].position[0] > b))
             balls[i].velocity[0] *= -1
 
         // Check wall collisions - z
-        if((balls[i].velocity[2] < 0 && balls[i].position[2] < -bounds) || 
-            (balls[i].velocity[2] > 0 && balls[i].position[2] > bounds))
+        if((balls[i].velocity[2] < 0 && balls[i].position[2] < -b) || 
+            (balls[i].velocity[2] > 0 && balls[i].position[2] > b))
             balls[i].velocity[2] *= -1
     }
 
@@ -215,14 +241,16 @@ function draw() {
     gl.enable(gl.DEPTH_TEST) 
 
     // Draw perspective object
-    mat4.perspective(projection, Math.PI/5, 1, 10, 30);
-    modelview = rotator.getViewMatrix();
-
-    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
+    mat4.perspective(projection, Math.PI/5, 1, 10, 80);
     if(zoomer) {
-        // var zoom = zoomer.getZoomScale()
+        var zoom = zoomer.getZoomScale()
+        // console.log(zoom)
+        rotator.setViewDistance(lerp(20, 50, (1-clamp(zoom, 0, 1))))
         // mat4.scale(modelview, modelview, vec3.fromValues(zoom,zoom,zoom))
     }
+
+    modelview = rotator.getViewMatrix();
+    mat4.scale(modelview, modelview, vec3.fromValues(scale, scale, scale))
     mat3.normalFromMat4(normalMatrix, modelview);
 
     for(let i = 0; i < balls.length; i++) {
@@ -231,7 +259,8 @@ function draw() {
         mat4.translate(modelview, modelview, balls[i].position);
         mat4.scale(modelview, modelview, vec3.fromValues(bScale, bScale, bScale))
         // console.log(balls[i].position)
-        ballMesh.draw(modelview, projection)
+        ballMesh.mat.setUniform("diffuseColor", balls[i].color)
+        ballMesh.draw(modelview, projection, normalMatrix)
         popTransform(modelview) 
     }
 

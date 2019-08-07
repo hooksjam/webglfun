@@ -137,11 +137,12 @@
         }
         R = -reflect(L,N);
         V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
-        if ( dot(L,N) <= 0.0 ) {
+        if ( dot(L,N) <= 0.0 && false ) {
             gl_FragColor = vec4(0,0,0,1);
         }
         else {
-            vec3 color = 0.8*dot(L,N) * diffuseColor.rgb;
+            //vec3 color = 0.8*dot(L,N) * diffuseColor.rgb;
+            vec3 color = diffuseColor.rgb;
             if (dot(R,V) > 0.0) {
                 color += 0.4*pow(dot(R,V),specularExponent) * specularColor;
             }
@@ -302,13 +303,8 @@
 
 <div style="display:flex">
 	<div id="canvas-holder">
-	   <canvas width=200 height=200 id="webglcanvas" style="background-color:red"></canvas>
+	   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
 	</div>
-	<!-- <div>
-		<img src="space.jpg" style="width:800px;height:800px"></img>
-	</div> -->
-</div>
-<div>
 </div>
 
 </body>

@@ -260,7 +260,7 @@
           vec3 V = -v_eyeCoords;
           vec3 R = -reflect(V,N);
           vec3 T = inverseViewTransform * R; // Transform by inverse of the view transform that was applied to the skybox
-          gl_FragColor = vec4(0.1, 0.1, 0.1, 0) + textureCube(skybox, T);
+          gl_FragColor = textureCube(skybox, T)*2.5;
           //gl_FragColor = vec4(0,0,1,1);
      }
 </script>
@@ -282,7 +282,9 @@
      varying vec3 v_coords;
      uniform samplerCube skybox;
      void main() {
-          gl_FragColor = textureCube(skybox, v_coords);
+          //gl_FragColor = textureCube(skybox, v_coords);
+          gl_FragColor = textureCube(skybox, normalize(v_coords.xyz));
+          //gl_FragColor = vec4(1,0,0,1);
      }
 </script>
 <script src="../base/gl-matrix-min.js"></script>
@@ -302,7 +304,7 @@
 
 <div style="display:flex">
 	<div id="canvas-holder">
-	   <canvas width=200 height=200 id="webglcanvas" style="background-color:red"></canvas>
+	   <canvas width=800 height=800 id="webglcanvas" style="background-color:red"></canvas>
 	</div>
 	<!-- <div>
 		<img src="space.jpg" style="width:800px;height:800px"></img>

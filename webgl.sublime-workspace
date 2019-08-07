@@ -1,0 +1,1313 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"ex",
+				"exitCallback"
+			],
+			[
+				"rebui",
+				"rebuildPostThumbs"
+			],
+			[
+				"walk",
+				"walkCategoryComponents"
+			],
+			[
+				"attrib",
+				"attributeValues"
+			],
+			[
+				"attri",
+				"attributeValues"
+			],
+			[
+				"cate",
+				"categoryID"
+			],
+			[
+				"wa",
+				"walkAllComponents"
+			],
+			[
+				"vari",
+				"variety"
+			],
+			[
+				"var",
+				"variety"
+			],
+			[
+				"inline",
+				"inlineScriptTags"
+			],
+			[
+				"rese",
+				"resetTimeout"
+			],
+			[
+				"deleteFol",
+				"deleteFolderRecursive"
+			],
+			[
+				"Template",
+				"templateHTML"
+			],
+			[
+				"varie",
+				"varietyExtension"
+			],
+			[
+				"back",
+				"backStack"
+			],
+			[
+				"can",
+				"cancelAnimation"
+			],
+			[
+				"findO",
+				"findOneAndUpdate"
+			],
+			[
+				"find",
+				"findOneAndUpdate"
+			],
+			[
+				"getC",
+				"getCurrentCategory"
+			],
+			[
+				"getCateg",
+				"getCategoryById"
+			],
+			[
+				"categ",
+				"categoryObj"
+			],
+			[
+				"sideb",
+				"sidebarAlign"
+			],
+			[
+				"sideB",
+				"sidebarAlign"
+			],
+			[
+				"side",
+				"sidebarAlign"
+			],
+			[
+				"catego",
+				"categoryOptions"
+			],
+			[
+				"Initi",
+				"initializeStream"
+			],
+			[
+				"tag",
+				"tagMatching"
+			],
+			[
+				"dataM",
+				"dataMatching"
+			],
+			[
+				"tagM",
+				"tagMatch"
+			],
+			[
+				"toggle",
+				"toggleShowAll"
+			],
+			[
+				"curr",
+				"currentTag"
+			],
+			[
+				"optio",
+				"optionObj"
+			],
+			[
+				"confir",
+				"confirmObj"
+			],
+			[
+				"pr",
+				"primary-darkest"
+			],
+			[
+				"formatee",
+				"formattedDate3"
+			],
+			[
+				"forma",
+				"formattedDate2"
+			],
+			[
+				"format",
+				"formattedDate2"
+			],
+			[
+				"for",
+				"formattedDate"
+			],
+			[
+				"thumb",
+				"thumbnail"
+			],
+			[
+				"thumn",
+				"thumbnail"
+			],
+			[
+				"getU",
+				"getUserPref"
+			],
+			[
+				"initi",
+				"initialized"
+			],
+			[
+				"light",
+				"lightOrDark"
+			],
+			[
+				"documenT",
+				"documentElement"
+			],
+			[
+				"getH",
+				"getHintAtIndex"
+			],
+			[
+				"up",
+				"updateTagFromIndex"
+			],
+			[
+				"vare",
+				"varietyExtension"
+			],
+			[
+				"primra",
+				"primary-mid"
+			],
+			[
+				"oip",
+				"optionsObj"
+			],
+			[
+				"Close",
+				"closeModal"
+			],
+			[
+				"progres",
+				"progressBar"
+			],
+			[
+				"remo",
+				"removeViewer"
+			],
+			[
+				"clear",
+				"clearViewer"
+			],
+			[
+				"getCA",
+				"getCategoryById"
+			],
+			[
+				"getUser",
+				"getUserPref"
+			],
+			[
+				"border-radius",
+				"border-top-left-radius\tproperty"
+			],
+			[
+				"second",
+				"secondary-mid"
+			],
+			[
+				"quit",
+				"quitTimeout"
+			],
+			[
+				"inter",
+				"interupt"
+			],
+			[
+				"containreP",
+				"containerPadding"
+			],
+			[
+				"place",
+				"placeholder"
+			],
+			[
+				"placeh",
+				"placeholderWidth"
+			],
+			[
+				"placeho",
+				"placeholderHeight"
+			],
+			[
+				"las",
+				"lastModified"
+			],
+			[
+				"backup",
+				"backupPath"
+			],
+			[
+				"upload",
+				"uploadTempDest"
+			],
+			[
+				"addM",
+				"addMoreWithInput"
+			],
+			[
+				"deletFolder",
+				"deleteFolderRecursive"
+			],
+			[
+				"getT",
+				"getUploadTempURL"
+			],
+			[
+				"Err",
+				"errorMessage"
+			],
+			[
+				"unitL",
+				"unityLoaded"
+			],
+			[
+				"unityP",
+				"unityPlaying"
+			],
+			[
+				"progr",
+				"progressBar"
+			],
+			[
+				"conte",
+				"contentPreview"
+			],
+			[
+				"EXIT",
+				"exitEdit"
+			],
+			[
+				"anno",
+				"annotationCharLimit"
+			],
+			[
+				"annotat",
+				"annotationCharLimit"
+			],
+			[
+				"compl",
+				"completeCallback"
+			],
+			[
+				"submit",
+				"submitTimeout"
+			],
+			[
+				"sub",
+				"submitTimeout"
+			],
+			[
+				"in",
+				"interrupt"
+			],
+			[
+				"upl",
+				"uploadPreview"
+			],
+			[
+				"backgrou",
+				"background-color\tproperty"
+			],
+			[
+				"confirm",
+				"confirmCallback"
+			],
+			[
+				"com",
+				"completeCallback"
+			],
+			[
+				"pro",
+				"progressCallback"
+			],
+			[
+				"succ",
+				"successCallback"
+			],
+			[
+				"add",
+				"addedCallback"
+			],
+			[
+				"previews",
+				"previewsContainer"
+			],
+			[
+				"showA",
+				"showAddComponent"
+			],
+			[
+				"compo",
+				"componentAdder"
+			],
+			[
+				"compone",
+				"componentAdder"
+			],
+			[
+				"K",
+				"keyCode"
+			],
+			[
+				"getM",
+				"getMustacheTempalates"
+			],
+			[
+				"edit",
+				"editCallback"
+			],
+			[
+				"edi",
+				"editCallback"
+			],
+			[
+				"click",
+				"clickCallback"
+			],
+			[
+				"holdTh",
+				"holdThresholdTimeout"
+			],
+			[
+				"contin",
+				"containerTop"
+			],
+			[
+				"con",
+				"containerTop"
+			],
+			[
+				"sc",
+				"scrollStart"
+			],
+			[
+				"annot",
+				"annotationObj"
+			],
+			[
+				"ano",
+				"annotationObj"
+			],
+			[
+				"op",
+				"optionDirty"
+			],
+			[
+				"cap",
+				"captionMdes"
+			],
+			[
+				"prev",
+				"prevRotation"
+			],
+			[
+				"dirty",
+				"dirtyComponents"
+			],
+			[
+				"compon",
+				"componentDirty"
+			],
+			[
+				"componetn",
+				"componentDirty"
+			],
+			[
+				"Dir",
+				"componentDirty"
+			],
+			[
+				"ac",
+				"actuallyUpdate"
+			],
+			[
+				"aa",
+				"actuallyUpdate"
+			],
+			[
+				"rot",
+				"rotateImage"
+			],
+			[
+				"init",
+				"initComponentInput"
+			],
+			[
+				"previ",
+				"previewText"
+			],
+			[
+				"ann",
+				"annotation"
+			],
+			[
+				"ease-",
+				"ease-in-out"
+			],
+			[
+				"high",
+				"highlightInitialized"
+			],
+			[
+				"time",
+				"timestamp"
+			],
+			[
+				"tiem",
+				"timestamp"
+			],
+			[
+				"error",
+				"errorMessage"
+			],
+			[
+				"mouse",
+				"mousedown"
+			],
+			[
+				"out",
+				"outerHeight"
+			],
+			[
+				"ori",
+				"originalWidth"
+			],
+			[
+				"origi",
+				"originalHeight"
+			],
+			[
+				"orig",
+				"originalHeight"
+			],
+			[
+				"origin",
+				"originalWidth"
+			],
+			[
+				"orin",
+				"originalHeight"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "11 - StarOrb2/index.js",
+			"settings":
+			{
+				"buffer_size": 15080,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "base/trackball-rotator.js",
+			"settings":
+			{
+				"buffer_size": 10356,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compile.sh",
+			"settings":
+			{
+				"buffer_size": 165,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "Play/10 - StarOrb1.html",
+			"settings":
+			{
+				"buffer_size": 103890,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "base/basic-object-models-IFS.js",
+			"settings":
+			{
+				"buffer_size": 18545,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "11 - StarOrb2/index.html",
+			"settings":
+			{
+				"buffer_size": 8892,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				":w",
+				":w - Save"
+			],
+			[
+				":W",
+				":w - Save"
+			],
+			[
+				"js",
+				"Set Syntax: JavaScript"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				":",
+				":$ - EOF"
+			],
+			[
+				":e",
+				":e - Revert"
+			],
+			[
+				":ew",
+				":w - Save"
+			],
+			[
+				":Lw",
+				"Convert Case: Lower Case"
+			],
+			[
+				":we",
+				":w - Save"
+			],
+			[
+				":a",
+				":w - Save"
+			],
+			[
+				":package ina",
+				"Package Control: Install Package"
+			],
+			[
+				":package install",
+				"Package Control: Install Package"
+			],
+			[
+				":inst",
+				"Package Control: Install Package"
+			],
+			[
+				":ww",
+				"HTML: Wrap Selection With Tag"
+			],
+			[
+				":lw",
+				"Snippet: Do While Loop"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 347.0,
+		"history":
+		[
+			"import urllib.request,os,hashlib; h = '6f4c264a24d933ce70df5dedcf1dcaee' + 'ebe013ee18cced0ef93d5f746d80ef60'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)import urllib.request,os,hashlib; h = '6f4c264a24d933ce70df5dedcf1dcaee' + 'ebe013ee18cced0ef93d5f746d80ef60'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/Users/James/Dropbox/Projects/webglfun",
+		"/C/Users/James/Dropbox/Projects/webglfun/11 - StarOrb2",
+		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit",
+		"/C/Users/James/Dropbox/Projects/webglfun/base",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source"
+	],
+	"file_history":
+	[
+		"/C/Users/James/Dropbox/Projects/webglfun/11 - StarOrb2/index.html",
+		"/C/Users/James/Dropbox/mystuff/src/server/routes/util.js",
+		"/C/Users/James/Dropbox/mystuff/src/server/routes/user.js",
+		"/C/Users/James/Dropbox/mystuff/src/css/style.css",
+		"/C/Users/James/Dropbox/mystuff/src/css/util/gallery.css",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/component_image.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/component.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/12 - BallPit/index.html",
+		"/C/Users/James/Dropbox/mystuff/src/js/util/gallery.js",
+		"/C/Users/James/Dropbox/mystuff/src/server/routes/post.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/viewer.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/session.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/space.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/editor.js",
+		"/D/gl/11 - StarOrb2/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/StarOrb/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/gl-base.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/shaders/phongTexture.c",
+		"/C/Users/James/Dropbox/Projects/webglfun/StarOrb/index.html",
+		"/C/Users/James/Desktop/WebGL Dynamic Reflection Map.htm",
+		"/C/Users/James/Dropbox/Projects/webglfun/Examples/basic-specular-lighting-Phong.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/StarCube1/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/StarCube1/index.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/util/fnc.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/viewer.mustache.html",
+		"/C/Users/James/Dropbox/MyStuff/credentials.txt",
+		"/C/Users/James/Dropbox/MyStuff/src/js/util/UnityLoader.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/component_unity.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/component_video.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/component_image.mustache.html",
+		"/C/Users/James/Dropbox/mystuff/src/js/post.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/util/adapter.js",
+		"/S/MyStuff/uploads/5d0b8a58a32f280f204be846/5d1bd5c4955e1313f8ba70f7/5d3781067be93d25409a0903/5d40fdb8a5b53d39a4395a30/bubblegum/Build.json",
+		"/C/Users/James/Dropbox/mystuff/src/html/index.html",
+		"/C/Users/James/Dropbox/Projects/Planet Plunder 2.0/Build/Build/UnityLoader.js",
+		"/C/Users/James/Dropbox/Projects/Planet Plunder 2.0/Build/Web/Build/UnityLoader.js",
+		"/C/Program Files/fnord software/WebM for Premiere/presets/Presets.txt",
+		"/F/Applications/Installers/Adobe/webmreadme.txt",
+		"/C/Users/James/Dropbox/Projects/webglfun/Starfield/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Starfield/index.html",
+		"/F/MyFiles_Archive/Game Design/Unity/Planet Plunder/Project/PlanetPlunder0.9/Assets/Scripts/Control.cs",
+		"/C/Users/James/Dropbox/MyStuff/src/server/config/mystuff.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/CrazyTrippyRingThing/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Source/BacteriaColorful/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Template/index.js",
+		"/C/Users/James/Dropbox/MyStuff/src/server/routes/post.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/Template/index.html",
+		"/F/Documents/SavedGames/Chopper/Levels/Player1/Level_0_7",
+		"/F/Documents/SavedGames/Chopper/Levels/Player1/Level_0_3",
+		"/C/Users/James/Dropbox/Projects/webglfun/TriOrbit/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/base/zoomer.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/compile.sh",
+		"/C/Users/James/Dropbox/Projects/webglfun/CrazyTrippyRingThing/index.js",
+		"/C/Users/James/Dropbox/Projects/webglfun/TriOrbit/index.html",
+		"/C/Users/James/Dropbox/Projects/webglfun/CrazyTrippyRingThing/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/BacteriaColorful/index.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/BacteriaColorful2/index.js",
+		"/C/Users/James/.ssh/id_rsa.pub",
+		"/C/Users/James/.inputrc",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria3/index.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria3/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria2/index.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria1/index.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Template/index.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria1/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria2/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/BacteriaColorful/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/compile.sh",
+		"/C/Users/James/Dropbox/Projects/Graphics/node_modules/inline-scripts/src/inlineScriptTags.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/crazytrippyringthing/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria1/test.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/base/inlineScriptTags.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/bacteria.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Bacteria1/tri.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/node_modules/inline-scripts/src/cli/wrapper.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/index.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/node_modules/inline-scripts/src/cli/inlineScriptTags.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/node_modules/inline-scripts/src/inlineScriptTags.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/compile.sh",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/tri.js",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/test.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/experiment.html",
+		"/C/Users/James/Dropbox/Projects/Graphics/Experiment/node_modules/inline-scripts/readme.md",
+		"/C/Users/James/Desktop/gltest/gl-base.js",
+		"/C/Users/James/Desktop/gl/gl/test.html",
+		"/C/Users/James/Desktop/gltest/tri.js",
+		"/C/Users/James/Desktop/gl/gl/test.js",
+		"/C/Users/James/Desktop/gl/gl/tri.js",
+		"/C/Users/James/Desktop/gl/gl/gl-base.js",
+		"/F/MyFiles_B/Career/Website/source/index.html",
+		"/F/MyFiles_B/Career/Website/source/templates/_templates.tmpl.htm",
+		"/F/MyFiles_B/Career/Website/source/pages/contactv2.htm",
+		"/F/MyFiles_B/Career/Website/source/pages/projectsv2.htm",
+		"/F/MyFiles_B/Education/College/Term 1/Audio/VGD106b_Hooks,James_w11/VGD106b_Hooks,James_aq1/VGD_JDH_CODE_FNL/FNL_CONTROLS.txt",
+		"/F/MyFiles_B/Education/College/Term 3/Animation/Week 2/Animation assignment.txt",
+		"/C/Users/James/Dropbox/mystuff/src/server/config/mystuff.js",
+		"/F/MyFiles_B/Education/College/Term 4/Term Lab 4 - Mad Monkey/Level Editor/Instructions.txt",
+		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab6/lab6.s",
+		"/F/System/Config/Keys.txt",
+		"/F/System/Config/path.txt",
+		"/C/Users/James/Dropbox/ImgsurfWorking/server.js",
+		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab6/lab6.txt",
+		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab5/lab.s",
+		"/F/MyFiles_B/Education/UofT/Fall 2017/CSC385/lab5/timerisr.s",
+		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Post.metadata.json",
+		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Post.bson",
+		"/C/HaxLogs.txt",
+		"/S/MyStuff/backup/5d0b8a58a32f280f204be846_2019-07-17T000428_beforereinstall/mystuff/Component.metadata.json",
+		"/C/Users/James/Desktop/zBrush/install - Read first.txt",
+		"/F/MyFiles_B/Projects/Cell Strapped/todo.txt",
+		"/F/Documents/Web Design/old/workinprogress/Templates/Main.dwt",
+		"/F/Documents/Game Design/Game Maker/Games 08/De Ball2/Game Maker Instructions.txt",
+		"/F/Documents/Game Design/Game Maker/Game Maker 5.3/Gmaker53/GM_License.txt",
+		"/F/Documents/Game Design/Game Maker/Game Maker 5.3/Username Lawyer Key 521992106660A657.txt",
+		"/F/Documents/Game Design/SniperX/SniperX/Game1.cs",
+		"/F/Documents/Game Design/SQRZ/Program (2).cs",
+		"/F/Documents/Game Design/SQRZ/Farseer/Farseer.csproj",
+		"/F/Documents/Game Design/SQRZ/SQRZ.cs",
+		"/F/Documents/Game Design/SniperX/SniperX/Program.cs",
+		"/F/Documents/Game Design/SniperX/SniperX/Game1_2.cs",
+		"/C/Users/James/Dropbox/mystuff/src/css/post.css",
+		"/C/Users/James/Dropbox/mystuff/src/js/templates/post_grid.js",
+		"/C/Users/James/Dropbox/mystuff/src/js/util/animate.js",
+		"/F/MyFiles_B/Career/Website/source/pages/homev2.htm",
+		"/F/MyFiles_B/Career/Website/source/javascripts/app.js",
+		"/F/MyFiles_B/Career/Portfolio/Portfolio.docx",
+		"/F/Documents/Web Design/old/StormAnims/Home/home.html"
+	],
+	"find":
+	{
+		"height": 40.0
+	},
+	"find_in_files":
+	{
+		"height": 105.0,
+		"where_history":
+		[
+			"C:\\Users\\James\\Dropbox\\mystuff\\src\\, *.js, *.css, *.html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\, *.js, *.css, *.html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.js, *.css, *.html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.js, *.css, *.html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.js, *.css, *.html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.js, *.css, *.html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.js, *.css",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.js, *.css",
+			"C:\\Users\\James\\Dropbox\\mystuff, *.js, *.css",
+			"C:\\Users\\James\\Dropbox\\mystuff, *.css",
+			"C:\\Users\\James\\Dropbox\\mystuff, *.js, *.css, *html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.js, *.css, *html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff, *.js, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.js, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\mystuff\\src, *.js, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\mystuff, *.js, *.css, *html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff\\src, *.js, *.css, *html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff, *.css, *html",
+			"C:\\Users\\jhooks.ORADEV\\Desktop\\mystuff, *.js, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src, *.js, *.css, *html",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src, *.js, *.css",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src, *.js",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src, *.css",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src, *.js",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\src",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\, -*.min.js",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\, -.min.js",
+			"C:\\Users\\James\\Dropbox\\MyStuff\\"
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+			"bodyMesh",
+			"body",
+			"bodies[i].scale)",
+			"10",
+			" r ",
+			"r ",
+			"looptimeout",
+			"startIndex",
+			"initialize",
+			"startInd",
+			"checkLo",
+			"loadBuffer",
+			"checkLoaded",
+			"progressiveLoad",
+			"random",
+			"replacePreview",
+			"width",
+			"calc((100% - 20px",
+			".compact .post",
+			"topBar",
+			"transition",
+			".gallery",
+			"thumb",
+			"clearData",
+			"ClearData",
+			"thumb",
+			"Math",
+			"}*/",
+			"attributeValues[key]",
+			"Processing",
+			"items have been processed",
+			"itmes have been processed",
+			"All items have",
+			"thumb",
+			"data-replace",
+			"getFileType",
+			"thumbName",
+			"imageThumbnail",
+			"thumb.thumb",
+			"sizeOf",
+			"thumb.thumb",
+			"config",
+			"thumb.thumb",
+			"util.thumb",
+			"currentCategory",
+			"galleryWithPreview",
+			"setupDropzon",
+			"startUpload",
+			"createComponent",
+			"upload",
+			"_scriptDir",
+			"UnityModule",
+			"getProjectPath",
+			"unity",
+			"unityzip",
+			"generateFie",
+			".image img",
+			"canvas",
+			"rotator",
+			"glBase",
+			"loopTimout",
+			"dist",
+			"bindBuffer",
+			"console",
+			"obj",
+			"rotator",
+			"projection",
+			");",
+			"initGl",
+			"uploadComponentDest",
+			"delete",
+			"restore",
+			"addPost",
+			"thumbnail",
+			"data-type=\"link\"",
+			"dat-type=\"link\"",
+			".compact .post-grid.showAll:hover .topBar",
+			"#posts.compact .post-grid .components ",
+			"#posts.compact .post-grid .toggleShowAll",
+			"\n}",
+			".post .components",
+			"#posts:not(.compact) .post-grid",
+			".post.post-grid:not(.oneChild) .components",
+			".post.post-grid:not(.oneChild) .components\\",
+			"#posts.compact .component[data-type=\"link\"]",
+			"#posts.compact .post-grid",
+			".compact .post:not(.pinned) .topBar",
+			"#posts.compact .post:hover",
+			".tags",
+			".post-grid:not(.showAll",
+			".post-grid",
+			"showAll",
+			"showInfo",
+			"remove",
+			"removePost",
+			".tags",
+			"closeEditor",
+			"clearFilters",
+			"loadSuggestions",
+			".post-grid .date",
+			"#postViewer",
+			".post .title",
+			"queueP",
+			"viewPost",
+			"Viewer.viewPost",
+			"empty",
+			"editPost",
+			"className",
+			"editPost",
+			"Viewer.previewPostt",
+			"preview",
+			"validatePost",
+			"toEdit",
+			"editPost",
+			"validatePost",
+			"replacePost",
+			"#postViewer .post-blog",
+			"closeModal",
+			"closeEditor",
+			"console.log",
+			"left",
+			"getRestorePoints",
+			".options",
+			"#postViewer",
+			"showUnity",
+			"unityOptions",
+			"setupUnity",
+			"none"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"loopTimeout",
+			"titleText",
+			"addCategory",
+			"light",
+			"mid",
+			".view",
+			"category.view",
+			"serPrefs",
+			"post-list",
+			"post-grid",
+			"post-blog",
+			"icon-commit",
+			"icon-progress",
+			"categoryID: post.category._id",
+			"unityChange",
+			"currentUnity",
+			"prevUnity",
+			"unitySelector",
+			"unityDZ",
+			"contentOptions",
+			"contentPreview",
+			"editAnnotation",
+			"validatePost",
+			"endSave",
+			"startSave",
+			"util/adapter",
+			"Viewer",
+			"Editor",
+			"Space",
+			"Session",
+			"options.offsetY",
+			"options.keepOpen",
+			"options.selectChosen",
+			"options.deselectOthers",
+			"options.setTitle",
+			"options.prefix",
+			"Space",
+			"Tooltip",
+			"Dialog",
+			"Modal",
+			"Session",
+			"Editor",
+			"Session",
+			"Dialog",
+			"Space",
+			"Session",
+			"Dialog",
+			"Session",
+			"categoryObj",
+			"manage"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "11 - StarOrb2/index.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15080,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2463,
+								2463
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1360.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "base/trackball-rotator.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10356,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 594.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "compile.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 165,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								11,
+								11
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/ShellScript/Bash.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "Play/10 - StarOrb1.html",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 103890,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								103850,
+								103850
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/HTML/HTML.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 44299.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "base/basic-object-models-IFS.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18545,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1323,
+								1323
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 378.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "11 - StarOrb2/index.html",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8892,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								7479,
+								7479
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/HTML/HTML.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4415.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 40.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "webgl.sublime-project",
+	"replace":
+	{
+		"height": 71.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 37.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 592.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 299.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
