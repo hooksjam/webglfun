@@ -1,5 +1,5 @@
 
-<script type="x-shader/x-vertex" id="phongColor-vshader-source">
+<script type="x-shader/x-vertex" id="phongRemove-vshader-source">
     attribute vec3 a_coords;
     attribute vec3 a_normal;
     uniform mat4 modelview;
@@ -19,7 +19,7 @@
     }
 </script>
 
-<script type="x-shader/x-fragment" id="phongColor-fshader-source">
+<script type="x-shader/x-fragment" id="phongRemove-fshader-source">
     #ifdef GL_FRAGMENT_PRECISION_HIGH
          precision highp float;
     #else
@@ -50,14 +50,11 @@
             color = vec3(ambientLighting*diffuseColor.rgb);
         }
         else {
-            color = (ambientLighting + (0.8-ambientLighting)*dotLN) * diffuseColor.rgb;
-
-            float dotRV = dot(R,V);
-            if (dotRV > 0.0) {
-                color += 0.4*pow(dotRV*dotLN,specularExponent) * specularColor;
+            if(dotLN > 0.5) {
+                discard;
             }
+            color = (ambientLighting + (0.8-ambientLighting)*dotLN) * diffuseColor.rgb;
         }
-
 
         gl_FragColor = vec4(color, diffuseColor.a);
     }

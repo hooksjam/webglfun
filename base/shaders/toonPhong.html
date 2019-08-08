@@ -1,5 +1,5 @@
 
-<script type="x-shader/x-vertex" id="phongColor-vshader-source">
+<script type="x-shader/x-vertex" id="toonPhong-vshader-source">
     attribute vec3 a_coords;
     attribute vec3 a_normal;
     uniform mat4 modelview;
@@ -19,7 +19,7 @@
     }
 </script>
 
-<script type="x-shader/x-fragment" id="phongColor-fshader-source">
+<script type="x-shader/x-fragment" id="toonPhong-fshader-source">
     #ifdef GL_FRAGMENT_PRECISION_HIGH
          precision highp float;
     #else
@@ -30,6 +30,7 @@
     uniform vec3 specularColor;
     uniform float specularExponent;
     uniform float ambientLighting;
+    uniform float factor;
     varying vec3 v_normal;
     varying vec3 v_eyeCoords;
     varying vec4 v_lightPosition;
@@ -43,22 +44,22 @@
             L = normalize( v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords );
         }
         R = -reflect(L,N);
-        V = normalize( -v_eyeCoords);  // (Assumes a perspective projection.)
-        vec3 color;
+        V = normalize( -v_eyeCoords);  
+
         float dotLN = dot(L,N);
-        if ( dotLN <= 0.0) {
-            color = vec3(ambientLighting*diffuseColor.rgb);
+        float shading = (dotLN+1.0)/2.0;
+        float step = 1.0/3.0;
+        float stepA = pow(step*2.0, factor);
+        float stepB = pow(step, factor);
+        if(shading > stepA) {
+            shading = 0.65 + 0.35*(shading-stepA)/(1.0-stepA);
+        } else if(shading > stepB) {
+            shading = 0.5;
+        } else {
+            shading = 0.0;
         }
-        else {
-            color = (ambientLighting + (0.8-ambientLighting)*dotLN) * diffuseColor.rgb;
 
-            float dotRV = dot(R,V);
-            if (dotRV > 0.0) {
-                color += 0.4*pow(dotRV*dotLN,specularExponent) * specularColor;
-            }
-        }
-
-
+        vec3 color = (ambientLighting + (1.0-ambientLighting)*shading) * diffuseColor.rgb;
         gl_FragColor = vec4(color, diffuseColor.a);
     }
 </script>

@@ -39,6 +39,19 @@ var shaders = {
         }
     },
 
+    "unlitUniformColorCircle": {
+        source: "unlitColor.c",
+        attributes: {
+            "coords":"vec3", 
+            "texcoord":"vec2"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "color":"vec3"
+        }
+    }, 
+
     "unlitTexture": {
         source: "unitTexture.c",
         attributes: {
@@ -48,12 +61,24 @@ var shaders = {
         }, 
         uniforms: {
             "modelview":"mat4", 
-            "projection":"mat4"
+            "projection":"mat4",
+            "texture": "sampler2D"
         }
     },
 
     "lambertColor": {
-
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "ambientLighting":"float"
+        }
     },
 
     "lambertTexture": {
@@ -121,7 +146,55 @@ var shaders = {
             "inverseViewTransform":"mat3",
             "skybox":"samplerCube"
         }
-    } 
+    },
+    "toon": {
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "ambientLighting":"float",
+            "factor":"float"
+        }
+    }, 
+
+    "toonPhong": {
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "ambientLighting":"float",
+            "factor":"float"
+        }
+    },  
+
+    "phongRemove": {
+        source: "phongColor.c",
+        attributes: {
+            "coords":"vec3", 
+            "normal":"vec3"
+        },
+        uniforms: {
+            "modelview":"mat4", 
+            "projection":"mat4",
+            "normalMatrix":"mat3",
+            "lightPosition":"vec4",
+            "diffuseColor":"vec4",
+            "ambientLighting":"float"
+        }
+    },
+ 
 }
 
 var materials = {}
@@ -200,15 +273,18 @@ function loadTexture(url, textureObject, callback) {
                               // do this or change the minification filter.
         callback()
     }
+    img.crossOrigin = 'anonymous'
     img.onerror = function(e,f) { 
+        console.log(e)
         // This function will be called if an error occurs while loading.
-        document.getElementById("headline").innerHTML =
+        document.getElementById("canvas-holder").innerHTML =
                         "<p>Sorry, texture image could not be loaded.</p>";
         callback()
     }
     img.src = url;  // Start loading of the image.
                     // This must be done after setting onload and onerror.
 }
+
 
 /* Creates a program for use in the WebGL context gl, and returns the
  * identifier for that program.  If an error occurs while compiling or
@@ -273,7 +349,6 @@ function initMaterial(shader, options = {}) {
         return
     }
 
-    console.log("INIT")
     var label = options.name || shader
     // console.log("INIT MATERIALS " + name)
 

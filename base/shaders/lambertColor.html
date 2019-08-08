@@ -1,0 +1,49 @@
+<script type="x-shader/x-vertex" id="lambertColor-vshader-source">
+    attribute vec3 a_coords;
+    attribute vec3 a_normal;
+    uniform mat4 modelview;
+    uniform mat4 projection;
+    uniform mat3 normalMatrix;
+    uniform vec4 diffuseColor;
+    uniform vec4 lightPosition;
+    uniform float ambientLighting; 
+    varying vec4 v_color;
+    varying vec4 v_lightPosition;
+    void main() {
+        vec4 coords = vec4(a_coords,1.0);
+        vec4 eyeCoords = modelview * coords;
+        vec3 v_eyeCoords = eyeCoords.xyz/eyeCoords.w; 
+        v_lightPosition = modelview * lightPosition; 
+
+        gl_Position = projection*eyeCoords;
+        vec3 N, L;
+        N = normalize(normalMatrix*a_normal);  // Transformed unit normal
+
+        if ( v_lightPosition.w == 0.0 ) {
+            L = normalize(v_lightPosition.xyz);
+        }
+        else {
+            L = normalize(v_lightPosition.xyz/v_lightPosition.w - v_eyeCoords);
+        }
+
+        float dotLN = dot(L,N);
+        if(dotLN <= 0.0) {
+            dotLN = ambientLighting;
+        } else {
+            dotLN = (ambientLighting + dotLN*(1.0 - ambientLighting));
+        }
+        v_color = vec4(dotLN*diffuseColor.rgb, diffuseColor.a);
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="lambertColor-fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+    varying vec4 v_color;
+    void main() {
+        gl_FragColor = v_color;
+    }
+</script>
